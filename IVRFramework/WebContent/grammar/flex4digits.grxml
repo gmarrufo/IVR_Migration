@@ -1,0 +1,266 @@
+<?xml version="1.0" encoding="iso-8859-1"?>
+
+<grammar xmlns="http://www.w3.org/2001/06/grammar"
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xsi:schemaLocation="http://www.w3.org/2001/06/grammar 
+                             http://www.w3.org/TR/speech-grammar/grammar.xsd"
+	xml:lang="en-US" version="1.0" mode="voice" root="flex4digits"
+	tag-format="semantics/1.0">
+
+<!-- flexible 4 digits -->
+
+<rule id="flex4digits" scope="public">
+	<ruleref special="NULL"/><tag><![CDATA[$="";]]></tag>
+ 	<one-of>
+  		<item><ruleref uri="#integer4"/><tag><![CDATA[$=$integer4;]]></tag></item>
+ 		<item><ruleref uri="#numSeq4"/><tag><![CDATA[$=$numSeq4;]]></tag></item>
+ 	</one-of>
+</rule>
+
+
+<rule id="numSeq4">
+ <ruleref special="NULL"/><tag><![CDATA[$="";]]></tag>
+
+	<one-of>
+	 	<item repeat="2-2"><ruleref uri="#Ddigit"/><tag><![CDATA[$=$+$Ddigit;]]></tag></item>	
+		<item>
+	 		<item><ruleref uri="#digit"/><tag><![CDATA[$=$digit;]]></tag></item>	
+			<item><ruleref uri="#Tdigit"/><tag><![CDATA[$=$+$Tdigit;]]></tag></item>		
+ 		</item>
+		<item>
+	 		<item><ruleref uri="#Tdigit"/><tag><![CDATA[$=$Tdigit;]]></tag></item>		
+ 			<item><ruleref uri="#digit"/><tag><![CDATA[$=$+$digit;]]></tag></item>		
+ 		</item>
+	</one-of>
+</rule>
+
+
+
+
+<rule id="digit">
+ 	<one-of>
+ 		<item><ruleref uri="#zeros"/><tag><![CDATA[$=$zeros;]]></tag></item>
+ 		<item><ruleref uri="#numbers1to9"/><tag><![CDATA[$=$numbers1to9;]]></tag></item>
+ 	</one-of>
+</rule>
+
+<rule id="Ddigit">
+<ruleref special="NULL"/><tag><![CDATA[$="";]]></tag>
+	<one-of>
+ 		<item repeat="2-2"> <ruleref uri="#digit"/><tag><![CDATA[$=$+$digit;]]></tag></item>
+ 		<item>
+ 			<item> double </item>
+ 			<item> <ruleref uri="#digit"/><tag><![CDATA[$=$digit+$digit;]]></tag></item>
+ 		</item>
+		<item>ten<tag><![CDATA[$=$+"10";]]></tag></item>
+		<item><ruleref uri="#teens"/><tag><![CDATA[$=$+$teens;]]></tag></item>
+		<item><ruleref uri="#tens20to90"/><tag><![CDATA[$=$+$tens20to90+"0";]]></tag></item>
+		<item>
+			<item><ruleref uri="#tens20to90"/><tag><![CDATA[$=$+$tens20to90;]]></tag></item>
+			<item><ruleref uri="#numbers1to9"/><tag><![CDATA[$=$+$numbers1to9;]]></tag></item>
+		</item>
+		
+
+		
+	</one-of>
+</rule>
+
+<rule id="Tdigit">
+ <ruleref special="NULL"/><tag><![CDATA[$="";]]></tag>
+	<one-of>
+ 		<item repeat="3-3"><ruleref uri="#digit"/><tag><![CDATA[$=$+$digit;]]></tag></item>
+ 		<item>
+ 			<item> double </item>
+ 			<item> <ruleref uri="#digit"/><tag><![CDATA[$=$digit+$digit;]]></tag></item>
+ 			<item> <ruleref uri="#digit"/><tag><![CDATA[$=$+$digit;]]></tag></item>
+ 		</item>
+ 		<item>
+ 			<item> triple </item>
+ 			<item> <ruleref uri="#digit"/><tag><![CDATA[$=$digit+$digit+$digit;]]></tag></item>
+ 		</item>
+	</one-of>
+</rule>
+
+
+
+
+<rule id="integer4">
+
+	<one-of>
+		<item><ruleref uri="#zeros"/><tag><![CDATA[$="0000";]]></tag></item>
+ 		<item><ruleref uri="#numbers0001to9999"/><tag><![CDATA[$=$numbers0001to9999;]]></tag></item>
+	</one-of>
+</rule>
+
+
+
+
+<rule id="zeros">
+	<one-of>
+ 		<item>zero<tag><![CDATA[$="0";]]></tag></item>
+ 		<item>oh<tag><![CDATA[$="0";]]></tag></item>
+	</one-of>
+</rule>
+
+<rule id="teens">
+	<one-of>
+ 		<item>eleven<tag><![CDATA[$="11";]]></tag></item>
+ 		<item>twelve<tag><![CDATA[$="12";]]></tag></item>
+ 		<item>thirteen<tag><![CDATA[$="13";]]></tag></item>
+ 		<item>fourteen<tag><![CDATA[$="14";]]></tag></item>
+ 		<item>fifteen<tag><![CDATA[$="15";]]></tag></item>
+ 		<item>sixteen<tag><![CDATA[$="16";]]></tag></item>
+ 		<item>seventeen<tag><![CDATA[$="17";]]></tag></item>
+ 		<item>eighteen<tag><![CDATA[$="18";]]></tag></item>
+ 		<item>nineteen<tag><![CDATA[$="19";]]></tag></item>
+	</one-of>
+</rule>
+
+<rule id="tens">
+	<one-of>
+ 		<item>ten<tag><![CDATA[$="1";]]></tag></item>
+ 		<item>twenty<tag><![CDATA[$="2";]]></tag></item>
+ 		<item>thirty<tag><![CDATA[$="3";]]></tag></item>
+ 		<item>forty<tag><![CDATA[$="4";]]></tag></item>
+ 		<item>fifty<tag><![CDATA[$="5";]]></tag></item>
+ 		<item>sixty<tag><![CDATA[$="6";]]></tag></item>
+ 		<item>seventy<tag><![CDATA[$="7";]]></tag></item>
+ 		<item>eighty<tag><![CDATA[$="8";]]></tag></item>
+ 		<item>ninety<tag><![CDATA[$="9";]]></tag></item>
+	</one-of>
+</rule>
+
+
+<rule id="tens20to90">
+	<one-of>
+ 		<item>twenty<tag><![CDATA[$="2";]]></tag></item>
+ 		<item>thirty<tag><![CDATA[$="3";]]></tag></item>
+ 		<item>forty<tag><![CDATA[$="4";]]></tag></item>
+ 		<item>fifty<tag><![CDATA[$="5";]]></tag></item>
+ 		<item>sixty<tag><![CDATA[$="6";]]></tag></item>
+ 		<item>seventy<tag><![CDATA[$="7";]]></tag></item>
+ 		<item>eighty<tag><![CDATA[$="8";]]></tag></item>
+ 		<item>ninety<tag><![CDATA[$="9";]]></tag></item>
+	</one-of>
+</rule>
+
+
+<rule id="twoDNum1to99">
+	<one-of>
+ 		<item>
+			<item><ruleref uri="#tens20to90"/><tag><![CDATA[$=$tens20to90;]]></tag></item>
+			<item><ruleref uri="#numbers1to9"/><tag><![CDATA[$=$+$numbers1to9;]]></tag></item>
+ 		</item>
+ 		<item><ruleref uri="#tens"/><tag><![CDATA[$=$tens+"0";]]></tag></item>
+ 		<item><ruleref uri="#teens"/><tag><![CDATA[$=$teens;]]></tag></item>		
+ 		<item><ruleref uri="#numbers1to9"/><tag><![CDATA[$="0"+$numbers1to9;]]></tag></item>
+	</one-of>
+</rule>
+
+<rule id="tenHundreds">
+	<one-of>
+ 		<item>
+ 			<item><ruleref uri="#tens"/><tag><![CDATA[$=$tens;]]></tag></item>
+ 			<item>hundred</item>
+ 			<item><ruleref uri="#twoDNum1to99"/><tag><![CDATA[$=$+$twoDNum1to99;]]></tag></item>
+ 		</item>
+ 		<item>
+ 			<item><ruleref uri="#tens"/><tag><![CDATA[$=$tens;]]></tag></item>
+ 			<item>hundred<tag><![CDATA[$=$+"00";]]></tag></item>
+ 		</item>
+ 		<item>
+ 			<item><ruleref uri="#teens"/><tag><![CDATA[$=$teens;]]></tag></item>
+ 			<item>hundred</item>
+ 			<item><ruleref uri="#twoDNum1to99"/><tag><![CDATA[$=$+$twoDNum1to99;]]></tag></item>
+ 		</item>
+ 		<item>
+ 			<item><ruleref uri="#teens"/><tag><![CDATA[$=$teens;]]></tag></item>
+ 			<item>hundred<tag><![CDATA[$=$+"00";]]></tag></item>
+ 		</item>
+ 		<item>
+ 			<item><ruleref uri="#tens20to90"/><tag><![CDATA[$=$tens20to90;]]></tag></item>
+ 			<item><ruleref uri="#numbers1to9"/><tag><![CDATA[$=$+$numbers1to9;]]></tag></item>
+ 			<item>hundred</item>
+ 			<item><ruleref uri="#twoDNum1to99"/><tag><![CDATA[$=$+$twoDNum1to99;]]></tag></item>
+ 		</item>
+ 		<item>
+ 			<item><ruleref uri="#tens20to90"/><tag><![CDATA[$=$tens20to90;]]></tag></item>
+ 			<item><ruleref uri="#numbers1to9"/><tag><![CDATA[$=$+$numbers1to9;]]></tag></item>
+ 			<item>hundred<tag><![CDATA[$=$+"00";]]></tag></item>
+ 		</item>
+ 		<item>
+ 			<item><ruleref uri="#tens20to90"/><tag><![CDATA[$=$tens20to90;]]></tag></item>
+ 			<item><ruleref uri="#numbers1to9"/><tag><![CDATA[$=$+$numbers1to9;]]></tag></item>
+ 			<item><ruleref uri="#twoDNum1to99"/><tag><![CDATA[$=$+$twoDNum1to99;]]></tag></item>
+ 		</item>
+ 		
+	</one-of>
+</rule>
+
+
+<rule id="threeDNum1to999">
+	<one-of>
+ 		<item>
+ 			<item><ruleref uri="#numbers1to9"/><tag><![CDATA[$=$numbers1to9;]]></tag></item>
+			<item>hundred</item>
+ 			<item><ruleref uri="#twoDNum1to99"/><tag><![CDATA[$=$+$twoDNum1to99;]]></tag></item>
+ 		</item>	
+ 		<item>
+ 			<item><ruleref uri="#numbers1to9"/><tag><![CDATA[$=$numbers1to9+"00";]]></tag></item>
+			<item>hundred</item>
+ 		</item>	
+  		<item><ruleref uri="#twoDNum1to99"/><tag><![CDATA[$="0"+$twoDNum1to99;]]></tag></item>
+	</one-of>
+</rule>
+
+
+<rule id="numbers0001to9999">
+	<one-of>
+ 		<item>
+ 			<item><ruleref uri="#numbers1to9"/><tag><![CDATA[$=$numbers1to9;]]></tag></item>
+ 			<item>thousand</item>
+ 			<item><ruleref uri="#numbers1to9"/><tag><![CDATA[$=$+$numbers1to9;]]></tag></item>
+ 			<item>hundred</item>
+ 			<item><ruleref uri="#twoDNum1to99"/><tag><![CDATA[$=$+$twoDNum1to99;]]></tag></item> 			
+ 		</item>
+ 		<item>
+ 			<item><ruleref uri="#numbers1to9"/><tag><![CDATA[$=$numbers1to9;]]></tag></item>
+ 			<item>thousand</item>
+ 			<item><ruleref uri="#numbers1to9"/><tag><![CDATA[$=$+$numbers1to9;]]></tag></item>
+ 			<item>hundred<tag><![CDATA[$=$+"00";]]></tag></item> 			
+ 		</item>
+ 		<item>
+ 			<item><ruleref uri="#numbers1to9"/><tag><![CDATA[$=$numbers1to9;]]></tag></item>
+ 			<item>thousand<tag><![CDATA[$=$+"000";]]></tag></item>
+ 		</item>
+
+		<item><ruleref uri="#threeDNum1to999"/><tag><![CDATA[$="0"+$threeDNum1to999;]]></tag></item>
+		<item><ruleref uri="#tenHundreds"/><tag><![CDATA[$=$tenHundreds;]]></tag></item>
+ 		<item>
+ 			<item><ruleref uri="#numbers1to9"/><tag><![CDATA[$=$numbers1to9+"0";]]></tag></item>
+ 			<item>thousand</item>
+			<item><ruleref uri="#twoDNum1to99"/><tag><![CDATA[$=$+$twoDNum1to99;]]></tag></item> 			
+ 		</item>
+	
+	</one-of>
+</rule>
+
+
+<rule id="numbers1to9">
+	<one-of>
+ 		<item>one<tag><![CDATA[$="1";]]></tag></item>
+ 		<item>two<tag><![CDATA[$="2";]]></tag></item>
+ 		<item>three<tag><![CDATA[$="3";]]></tag></item>
+ 		<item>four<tag><![CDATA[$="4";]]></tag></item>
+ 		<item>five<tag><![CDATA[$="5";]]></tag></item>
+ 		<item>six<tag><![CDATA[$="6";]]></tag></item>
+ 		<item>seven<tag><![CDATA[$="7";]]></tag></item>
+ 		<item>eight<tag><![CDATA[$="8";]]></tag></item>
+ 		<item>nine<tag><![CDATA[$="9";]]></tag></item>
+	</one-of>
+</rule>
+
+
+
+
+</grammar>

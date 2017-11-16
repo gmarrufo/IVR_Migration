@@ -1,0 +1,36 @@
+<!-- MenuOperator Version 09/8/2010 -->
+
+			<!-- TODO: handle operator event for specific menus -->
+
+			<%			
+			java.util.List menuOperators = iSubMenu.getMenuOperator();
+			String scope = com.ibm.ivr.framework.utilities.Common.SCOPE_LOCAL;
+			
+			if (menuOperators.size() == 0) {
+				menuOperators = iCallRouting.getMenuOperator();
+				scope = com.ibm.ivr.framework.utilities.Common.SCOPE_GLOBAL;
+			}
+			int nMenuOperator = menuOperators.size();
+			for (int i = 0; i < nMenuOperator; i++) {
+				//check the cond, if false, no need to generate the handler
+				String cond = ((com.ibm.ivr.framework.model.MenuOperatorType) menuOperators
+							.get(i)).getCond();
+				boolean condResult = true;
+				if (cond != null && cond.length() != 0) {
+					condResult = com.ibm.ivr.framework.utilities.Common
+								.conditionsMatch(cond, session, logToken);
+					if (testCall)
+							LOGGER.debug(new StringBuffer(logToken).append(
+									"RoutingTag cond: [" + cond).append(
+									"] evaluated as: ").append(condResult));
+				}
+				if (condResult) {
+			%>
+			<catch event="ivr.event.operator">
+				<ivr:routing type="MenuOperator" index="<%=i%>" scope="<%=scope%>" />
+			</catch>
+			<%  	break;
+			    }
+			}%>
+			
+<!-- MenuOperator Version 09/8/2010 -->

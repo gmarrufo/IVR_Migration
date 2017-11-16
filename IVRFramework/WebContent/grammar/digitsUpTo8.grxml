@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="iso-8859-1"?>
+
+<grammar version="1.0" xmlns="http://www.w3.org/2001/06/grammar" tag-format="semantics/1.0" mode="dtmf" root="addtag">
+
+<!-- This grammar is used by the EWT functions -->
+
+<rule id="digitE">
+ <one-of>
+   <item> 0 </item>
+   <item> 1 </item>
+   <item> 2 </item>
+   <item> 3 </item>
+   <item> 4 </item>
+   <item> 5 </item>
+   <item> 6 </item>
+   <item> 7 </item>
+   <item> 8 </item>
+   <item> 9 </item>
+ </one-of>
+</rule>
+
+<rule id="collectNumberE" scope="public">
+ <ruleref special="NULL"/><tag><![CDATA[$="";]]></tag>
+   <item>
+      <item repeat="1-8"><ruleref uri="#digitE"/><tag><![CDATA[$=$+$digitE;]]></tag></item>
+   </item>  
+</rule>
+
+<rule id="addtag" scope="public">
+     <item><ruleref uri="#collectNumberE"/><tag><![CDATA[$="digitsUpTo8:"+$collectNumberE;]]></tag></item>
+</rule>
+</grammar>

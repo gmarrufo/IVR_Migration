@@ -1,0 +1,224 @@
+<!-- ErrorHandling Version 09/8/2010 -->
+
+			<!-- only generate noinput handler when at least one handler is specified -->
+			<%	
+			java.util.List noinputs = iSubMenu.getNoInput();
+			java.util.List nomatches = iSubMenu.getNoMatch();
+			java.util.List inputerrors = iSubMenu.getInputError();
+			scope = com.ibm.ivr.framework.utilities.Common.SCOPE_LOCAL;
+			
+			//if none of the handlers are defined, use the global handlers
+			if (noinputs.size() == 0 && nomatches.size() == 0 && inputerrors.size() == 0) {
+				if (iCallRouting.getEventHandlers() != null) {
+					noinputs = iCallRouting.getEventHandlers().getNoInput();
+					nomatches = iCallRouting.getEventHandlers().getNoMatch();
+					inputerrors = iCallRouting.getEventHandlers().getInputError();
+					scope = com.ibm.ivr.framework.utilities.Common.SCOPE_GLOBAL;
+				}
+			}
+			
+			%>
+			<catch event="noinput">
+				<assign name="event"
+					expr="'noinput'" />
+				<assign name="noinputCounter"
+					expr="noinputCounter + 1" />
+				<assign name="inputErrorCounter"
+					expr="inputErrorCounter + 1" />
+				<throw event="ivr.event.inputerror" />
+			</catch>
+
+			<%int niCount = noinputs.size();
+			int initialCount = 0;
+			for (int i = 0; i < niCount; i++) {
+				//check the cond, if false, no need to generate the handler
+				String cond = ((com.ibm.ivr.framework.model.NoInputType) noinputs
+						.get(i)).getCond();
+				boolean condResult = true;
+				if (cond != null && cond.length() != 0) {
+					condResult = com.ibm.ivr.framework.utilities.Common
+							.conditionsMatch(cond, session, logToken);
+					if (testCall)
+						LOGGER.debug(new StringBuffer(logToken).append(
+								"RoutingTag cond: [" + cond).append(
+								"] evaluated as: ").append(condResult));
+				}
+				if (condResult) {
+					int count = ((com.ibm.ivr.framework.model.NoInputType)noinputs.get(i)).getCount();
+					if (initialCount == 0) initialCount = (count == 0 ? 1 : count);
+				%>
+			<catch event="ivr.event.noinput"
+				count="<%=(count == 0 ? 1 : count)%>">
+				<prompt>
+					<ivr:audio
+						src="<%=((com.ibm.ivr.framework.model.NoInputType)noinputs.get(i)).getValue()%>"
+						tts="<%=((com.ibm.ivr.framework.model.NoInputType)noinputs.get(i)).getTts()%>" />
+				</prompt>
+				<% if (((com.ibm.ivr.framework.model.NoInputType)noinputs.get(i)).getReprompt() != null
+						&& ((com.ibm.ivr.framework.model.NoInputType)noinputs.get(i)).getReprompt().equalsIgnoreCase("TRUE")){ %>
+					<reprompt />
+				<%}%>
+				<%//increment counter through vxml var even if targetType is not specified 
+				  //(counter will be automatically handled in routing tag if targetType is specified)
+				 if (((com.ibm.ivr.framework.model.NoInputType)noinputs.get(i)).getTargetType() == null) { 
+				 	String counter = ((com.ibm.ivr.framework.model.NoInputType)noinputs.get(i)).getCounter();
+				 	counter = com.ibm.ivr.framework.utilities.Common.evaluateCounterName(counter, session);
+					if (counter != null){
+				 %>
+				<assign name="counter" expr="counter + '<%=counter%>'"/>
+				<%	}
+				}%>	
+				<ivr:routing type="NoInput" index="<%=i%>" scope="<%=scope%>" />
+			</catch>
+			<%}
+			}
+			if (niCount == 0
+					|| initialCount > 1) {%>
+			<catch event="ivr.event.noinput">
+				<if cond="reprompt == 'true'">
+					<reprompt />
+				</if>
+			</catch>
+			<%}%>
+
+			<!-- only generate nomatch handler when at least one handler is specified -->
+
+			<catch event="nomatch">
+				<assign name="event"
+					expr="'nomatch'" />
+				<assign name="nomatchCounter"
+					expr="nomatchCounter + 1" />
+				<assign name="inputErrorCounter"
+					expr="inputErrorCounter + 1" />
+				<throw event="ivr.event.inputerror" />
+			</catch>
+
+			<%int nmCount = nomatches.size();
+			initialCount = 0;
+			for (int i = 0; i < nmCount; i++) {
+				//check the cond, if false, no need to generate the handler
+				String cond = ((com.ibm.ivr.framework.model.NoMatchType) nomatches
+						.get(i)).getCond();
+				boolean condResult = true;
+				if (cond != null && cond.length() != 0) {
+					condResult = com.ibm.ivr.framework.utilities.Common
+							.conditionsMatch(cond, session, logToken);
+					if (testCall)
+						LOGGER.debug(new StringBuffer(logToken).append(
+								"RoutingTag cond: [" + cond).append(
+								"] evaluated as: ").append(condResult));
+				}
+				if (condResult) {
+					int count = ((com.ibm.ivr.framework.model.NoMatchType)nomatches.get(i)).getCount();
+					if (initialCount == 0) initialCount = (count == 0 ? 1 : count);
+				%>
+			<catch event="ivr.event.nomatch"
+				count="<%=(count == 0 ? 1 : count)%>">
+				<prompt>
+					<ivr:audio
+						src="<%=((com.ibm.ivr.framework.model.NoMatchType)nomatches.get(i)).getValue()%>"
+						tts="<%=((com.ibm.ivr.framework.model.NoMatchType)nomatches.get(i)).getTts()%>" />
+				</prompt>
+				<% if (((com.ibm.ivr.framework.model.NoMatchType)nomatches.get(i)).getReprompt() != null
+						&& ((com.ibm.ivr.framework.model.NoMatchType)nomatches.get(i)).getReprompt().equalsIgnoreCase("TRUE")){ %>
+					<reprompt />
+				<%}%>
+				<%//increment counter through vxml var even if targetType is not specified 
+				  //(counter will be automatically handled in routing tag if targetType is specified)
+				 if (((com.ibm.ivr.framework.model.NoMatchType)nomatches.get(i)).getTargetType() == null) { 
+				 	String counter = ((com.ibm.ivr.framework.model.NoMatchType)nomatches.get(i)).getCounter();
+				 	counter = com.ibm.ivr.framework.utilities.Common.evaluateCounterName(counter, session);
+					if (counter != null){
+				 %>
+				<assign name="counter" expr="counter + '<%=counter%>'"/>
+				<%	}
+				}%>			
+				<ivr:routing type="NoMatch" index="<%=i%>" scope="<%=scope%>" />
+			</catch>
+			<%}
+			}
+			if (nmCount == 0
+					|| initialCount > 1) {%>
+			<catch event="ivr.event.nomatch">
+				<if cond="reprompt == 'true'">
+					<reprompt />
+				</if>
+			</catch>
+			<%}%>
+
+			<catch event="ivr.event.inputerror">
+			<%int ieCount = inputerrors.size();
+				int ieIndex[] = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
+				int index = 0;
+				for (int i = 0; i < ieCount; i++) {
+					//check the cond, if false, no need to generate the handler
+					String cond = ((com.ibm.ivr.framework.model.InputErrorType) inputerrors
+							.get(i)).getCond();
+					boolean condResult = true;
+					if (cond != null && cond.length() != 0) {
+						condResult = com.ibm.ivr.framework.utilities.Common
+								.conditionsMatch(cond, session, logToken);
+						if (testCall)
+							LOGGER.debug(new StringBuffer(logToken).append(
+									"RoutingTag cond: [" + cond).append(
+									"] evaluated as: ").append(condResult));
+					}
+					if (condResult) {
+						ieIndex[index] = i;
+						index = index + 1;
+					}
+				}
+				
+				for (int j = 0; j < index; j++) {
+					int count = ((com.ibm.ivr.framework.model.InputErrorType)inputerrors.get(ieIndex[j])).getCount();
+					int nextCount = 10;
+					for (int k = j + 1; k < index; k++) {
+						int temp = ((com.ibm.ivr.framework.model.InputErrorType)inputerrors.get(ieIndex[k])).getCount();
+						if (temp != count) {
+							nextCount = temp;
+							break;
+						}
+					}
+					String event = ((com.ibm.ivr.framework.model.InputErrorType)inputerrors.get(ieIndex[j])).getEvent();
+					if (event == null) {%>
+				<if cond="inputErrorCounter >= <%=count%> &amp;&amp; inputErrorCounter &lt; <%=nextCount%>">
+				<%  }else{ 
+							String[] segments = event.split("\\(|\\)");
+					 	if (segments.length == 1) { %>
+				<if cond="inputErrorCounter >= <%=count%> &amp;&amp; inputErrorCounter &lt; <%=nextCount%> &amp;&amp; event == '<%=event%>'">
+				<%		} else { %>
+				<if cond="inputErrorCounter >= <%=count%> &amp;&amp; inputErrorCounter &lt; <%=nextCount%> &amp;&amp; <%=segments[0]%>Counter == <%=segments[1]%>">
+				<%      }
+					}%>
+					<prompt>
+						<ivr:audio
+							src="<%=((com.ibm.ivr.framework.model.InputErrorType)inputerrors.get(ieIndex[j])).getValue()%>"
+							tts="<%=((com.ibm.ivr.framework.model.InputErrorType)inputerrors.get(ieIndex[j])).getTts()%>" />
+					</prompt>
+					<% if (((com.ibm.ivr.framework.model.InputErrorType)inputerrors.get(ieIndex[j])).getReprompt() != null
+						&& ((com.ibm.ivr.framework.model.InputErrorType)inputerrors.get(ieIndex[j])).getReprompt().equalsIgnoreCase("TRUE")){ %>
+						<assign name="reprompt" expr="'true'" />
+					<%} else {%>
+					<assign name="reprompt" expr="'false'" />
+					<%}%>
+					<%//increment counter through vxml var even if targetType is not specified 
+					  //(counter will be automatically handled in routing tag if targetType is specified)
+					 if (((com.ibm.ivr.framework.model.InputErrorType)inputerrors.get(ieIndex[j])).getTargetType() == null) { 
+					 	String counter = ((com.ibm.ivr.framework.model.InputErrorType)inputerrors.get(ieIndex[j])).getCounter();
+					 	counter = com.ibm.ivr.framework.utilities.Common.evaluateCounterName(counter, session);
+					 	if (counter != null){
+					 %>
+					 <assign name="counter" expr="counter + '<%=counter%>'"/>
+					<%	}
+					 }%>
+					<ivr:routing type="InputError" index="<%=ieIndex[j]%>" scope="<%=scope%>" />
+				</if>
+				<%}%>
+				<if cond="event == 'noinput'">
+					<throw event="ivr.event.noinput"/>
+				<else/>
+					<throw event="ivr.event.nomatch"/>
+				</if>
+			</catch>
+
+<!-- ErrorHandling Version 09/8/2010 -->

@@ -1,0 +1,182 @@
+<!-- TransferAction Version 09/8/2010 -->
+
+<form id="transferAction">
+		<sess:existsAttribute name="iCallRoutingConfirmed" value="false">
+			<var name="appName" expr="'UNKNOWN'" />
+			<var name="tnt"
+				expr="'<c:out value="${applicationScope.globalProp.TNT}"/>'" />
+		</sess:existsAttribute>
+		<sess:existsAttribute name="iCallRoutingConfirmed">
+			<var name="appName"
+				expr="'<c:out value="${sessionScope.iName}"/>'" />
+			<!-- CUSTOMIZABLE: session var TNT will be set in EntryPoint Servlet based on incoming DNIS
+								it can be further modified in the call flow if more specific TNT should be used -->
+			<var name="tnt"
+				expr="'<c:out value="${sessionScope.TNT}"/>'" />
+		</sess:existsAttribute>
+
+		<var name="TNT" expr="''"/>
+		
+		<!-- typical dir on WVR: file:///xxxxx/vxml/ -->
+		<!-- typical dir on GVP: http://localhost:80/xxxxx/vxml -->
+		<var name="staticVXMLDir" expr="'<c:out value="${applicationScope.globalProp.staticVXMLDir}"/>'"/>
+
+		<app:equalsInitParameter name="transferEnabled" match="true"
+			ignoreCase="true">
+			<app:equalsInitParameter name="ivrPlatform" match="GVP"
+					ignoreCase="true">
+				<block>
+					<c:if test="${applicationScope.globalProp.transferOnError == 'true'}">
+						<assign name="TNT" expr="tnt" />
+					</c:if>	
+					<log posturl="<c:out value="${applicationScope.globalProp.staticVXMLDir}"/>Log.asp">
+						<value
+							expr="'About to TNT: '" />
+						<value expr="'<c:out value="${sessionScope.TNT}"/>'" />
+					</log>
+					<if cond="TNT == ''">
+						<goto nextitem="finish"/>
+					<else/>
+						<goto nextitem="tntField"/>
+					</if>
+				</block>
+
+				<field name="tntField" modal="true">
+					<prompt timeout="0.1s">
+						<value mode="dtmfplay" expr="'*8'" xmlns="http://www.telera.com/vxml/2.0/ext/20020430"/>
+						<!-- CUSTOMIZABLE: the 300ms silence file will be saved on GVP platform under special dir
+											since this form is normally called under badfetch error -->
+						<audio src="<c:out value="${applicationScope.globalProp.staticVXMLDir}"/>Silence300.au" />
+						<value mode="dtmfplay" expr="TNT" xmlns="http://www.telera.com/vxml/2.0/ext/20020430"/>
+					</prompt> 
+					<grammar mode="dtmf" version="1.0" root="tntRule">
+						<rule id="tntRule" scope="public">
+							<one-of>
+								<item>
+									#
+								</item>
+							</one-of>
+						</rule>
+					</grammar>
+					<noinput>
+						<goto nextitem="finish"/>
+					</noinput>
+					<nomatch>
+						<goto nextitem="finish"/>
+					</nomatch>
+					<filled>
+						<goto nextitem="finish"/>
+					</filled>
+				</field>
+
+			</app:equalsInitParameter>
+
+		
+			<app:equalsInitParameter name="ivrPlatform" match="WVR"
+					ignoreCase="true">
+					
+				<block>
+					<c:if test="${applicationScope.globalProp.transferOnError == 'true'}">
+						<assign name="TNT" expr="tnt" />
+					</c:if>	
+					<log>
+						<value
+							expr="CALLID + 'About to TNT: '" />
+						<value expr="'<c:out value="${sessionScope.TNT}"/>'" />
+					</log>
+					<c:if
+						test="${applicationScope.globalProp.emailOnError == 'true'}">
+						<goto nextitem="emailer"/>
+					</c:if>
+					<if cond="TNT == ''">
+						<goto nextitem="finish"/>
+					<else/>
+						<goto nextitem="tntField"/>
+					</if>
+				</block>
+
+				<object name="emailer" classid="method://com.ibm.ivr.framework.utilities.EmailAlert/execute" codetype="javacode"
+								archive="<c:out value="${applicationScope.globalProp.staticVXMLDir}"/>/../utils/EmailAlert.jar" maxage="0">
+					<param name="setFrom" expr="'<c:out value="${applicationScope.globalProp.emailSender}"/>'" />
+					<param name="setTo" expr="'<c:out value="${applicationScope.globalProp.emailRecipient}"/>'" />
+					<param name="setMailHost" expr="'<c:out value="${applicationScope.globalProp.SMTP}"/>'" />
+					<param name="setSubject" expr="subject + ' error occured in application ' + appName + ' on CALLID ' + CALLID" />
+					
+					<filled>
+						<if cond="TNT == ''">
+							<goto nextitem="finish"/>
+						<else/>
+							<goto nextitem="tntField"/>
+						</if>
+					</filled>
+				</object>
+
+
+				<transfer name="tntField" destexpr="'tel:' + '<c:out value="${applicationScope.globalProp.converseAgentPrefix}"/>' + TNT + ';phone-context=' + '<c:out value="${applicationScope.globalProp.phoneContext}"/>'" bridge="false">
+					<filled>
+						<assign name="converseTransfer" expr="'succeeded'"/>
+						<goto nextitem="finish"/>
+					</filled>
+					<error>
+						<assign name="exitReason"
+							expr="exitReason + '-ConverseTransferFailed'" />
+						<goto nextitem="finish"/>
+					</error>
+				</transfer>
+				<catch event="connection.disconnect.transfer">
+					<assign name="converseTransfer" expr="'succeeded'"/>
+					<goto nextitem="finish"/>
+     			</catch>
+				
+			</app:equalsInitParameter>
+
+		</app:equalsInitParameter>
+
+		<block name="finish">			
+			<submit next="<%=request.getContextPath()%>/ExitServlet"
+				namelist="exitReason" />
+		</block>
+		
+		<catch event="error.badfetch" count="1">
+			<app:equalsInitParameter name="ivrPlatform" match="GVP"
+				ignoreCase="true">
+				<log posturl="<c:out value="${applicationScope.globalProp.staticVXMLDir}"/>Log.asp">
+					<value
+						expr="'VXMLAppError: ' + telera.error.description" />
+				</log>
+			</app:equalsInitParameter>
+			<app:equalsInitParameter name="ivrPlatform" match="WVR"
+				ignoreCase="true">
+				<log>
+					<value expr="CALLID + 'VXMLAppError: ' + _message" />
+				</log>
+			</app:equalsInitParameter>
+			<exit/>
+		</catch>
+
+		<catch event="error" count="1">
+			<app:equalsInitParameter name="ivrPlatform" match="GVP"
+				ignoreCase="true">
+				<log posturl="<c:out value="${applicationScope.globalProp.staticVXMLDir}"/>Log.asp">
+					<value
+						expr="'VXMLAppError: ' + telera.error.description" />
+				</log>
+			</app:equalsInitParameter>
+			<app:equalsInitParameter name="ivrPlatform" match="WVR"
+				ignoreCase="true">
+				<log>
+					<value expr="CALLID + 'VXMLAppError: ' + _message" />
+				</log>
+			</app:equalsInitParameter>
+			
+			<assign name="exitReason"
+				expr="'VXMLAppError.TransferActionFailed'" />
+			<submit next="<%=request.getContextPath()%>/ExitServlet"
+				namelist="exitReason" />
+		</catch>
+		
+		<catch event="error" count="2">
+			<exit />
+		</catch>
+	</form>
+<!-- TransferAction Version 09/8/2010 -->	

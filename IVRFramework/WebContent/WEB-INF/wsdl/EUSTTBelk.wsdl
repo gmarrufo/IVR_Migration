@@ -1,0 +1,50 @@
+<?xml version="1.0" encoding="UTF-8"?><wsdl:definitions targetNamespace="http://belk.eus.ibm.com" xmlns:impl="http://belk.eus.ibm.com" xmlns:intf="http://belk.eus.ibm.com" xmlns:wsdl="http://schemas.xmlsoap.org/wsdl/" xmlns:wsdlsoap="http://schemas.xmlsoap.org/wsdl/soap/" xmlns:wsi="http://ws-i.org/profiles/basic/1.1/xsd" xmlns:xsd="http://www.w3.org/2001/XMLSchema">
+  <wsdl:types>
+    <schema targetNamespace="http://belk.eus.ibm.com" xmlns="http://www.w3.org/2001/XMLSchema">
+   <element name="xPrintOverNightReportsResponse">
+    <complexType>
+     <sequence>
+      <element name="xPrintOverNightReportsReturn" nillable="true" type="xsd:string"/>
+     </sequence>
+    </complexType>
+   </element>
+   <element name="xPrintOverNightReports">
+    <complexType>
+     <sequence>
+      <element name="xPrinterName" nillable="true" type="xsd:string"/>
+      <element name="xReportsToPrint" nillable="true" type="xsd:string"/>
+     </sequence>
+    </complexType>
+   </element>
+  </schema>
+  </wsdl:types>
+  <wsdl:message name="xPrintOverNightReportsResponse">
+    <wsdl:part element="impl:xPrintOverNightReportsResponse" name="parameters"/>
+  </wsdl:message>
+  <wsdl:message name="xPrintOverNightReportsRequest">
+    <wsdl:part element="impl:xPrintOverNightReports" name="parameters"/>
+  </wsdl:message>
+  <wsdl:portType name="EUSTTBelk">
+    <wsdl:operation name="xPrintOverNightReports">
+      <wsdl:input message="impl:xPrintOverNightReportsRequest" name="xPrintOverNightReportsRequest"/>
+      <wsdl:output message="impl:xPrintOverNightReportsResponse" name="xPrintOverNightReportsResponse"/>
+    </wsdl:operation>
+  </wsdl:portType>
+  <wsdl:binding name="EUSTTBelkSoapBinding" type="impl:EUSTTBelk">
+    <wsdlsoap:binding style="document" transport="http://schemas.xmlsoap.org/soap/http"/>
+    <wsdl:operation name="xPrintOverNightReports">
+      <wsdlsoap:operation soapAction=""/>
+      <wsdl:input name="xPrintOverNightReportsRequest">
+        <wsdlsoap:body use="literal"/>
+      </wsdl:input>
+      <wsdl:output name="xPrintOverNightReportsResponse">
+        <wsdlsoap:body use="literal"/>
+      </wsdl:output>
+    </wsdl:operation>
+  </wsdl:binding>
+  <wsdl:service name="EUSTTBelkService">
+    <wsdl:port binding="impl:EUSTTBelkSoapBinding" name="EUSTTBelk">
+      <wsdlsoap:address location="http://bldaut01.boulder.ibm.com:9080/EUSTTBelk/services/EUSTTBelk"/>
+    </wsdl:port>
+  </wsdl:service>
+</wsdl:definitions>

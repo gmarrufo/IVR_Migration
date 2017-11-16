@@ -1,0 +1,95 @@
+<?xml version="1.0" encoding ="iso-8859-1"?>
+<!-- Version 09/8/2010 -->
+
+<%@ taglib uri="http://jakarta.apache.org/taglibs/request-1.0" prefix="req" %>
+<%@ taglib uri="http://jakarta.apache.org/taglibs/response-1.0" prefix="res" %>
+<%@ taglib uri="http://jakarta.apache.org/taglibs/application-1.0" prefix="app" %>
+<%@ taglib uri="http://jakarta.apache.org/taglibs/session-1.0" prefix="sess" %>
+<%@ taglib uri="http://java.sun.com/jsp/jstl/core" prefix="c" %>
+
+<%@ taglib uri="/WEB-INF/tld/ibm_ivr_framework.tld"   prefix="ivr" %>
+
+<%response.setDateHeader("Expires", 0);
+			response.setHeader("Cache-Control", "no-cache");
+			response.setHeader("Pragma", "no-cache");
+%>
+
+<vxml version="2.0" xml:lang="en-US" xmlns="http://www.w3.org/2001/vxml"
+	application="<%=request.getContextPath()%>/jsp/Root.jsv">
+	<%@ page contentType="application/voicexml+xml" %>
+	<meta name="GENERATOR" content="Voice Toolkit for WebSphere Studio" />
+	<!-- Place VoiceXML JSP (.jsv) content here. -->
+	<!-- RoutingClosed.jsv -->
+
+	<sess:existsAttribute name="iCallRoutingConfirmed" value="false">
+		<var name="targetNumber"
+			expr="'<c:out value="${applicationScope.globalProp.defaultOperator}"/>'" />
+	</sess:existsAttribute>
+	<sess:existsAttribute name="iCallRoutingConfirmed">
+		<sess:existsAttribute name="iOperator">
+			<var name="targetNumber"
+				expr="'<c:out value="${sessionScope.iOperator.value}"/>'" />
+		</sess:existsAttribute>
+		<sess:existsAttribute name="iOperator" value="false">
+			<var name="targetNumber"
+				expr="'<c:out value="${applicationScope.globalProp.defaultOperator}"/>'" />
+		</sess:existsAttribute>		
+	</sess:existsAttribute>
+
+	<script>
+		targetNumber = targetNumber.replace('-',''); targetNumber =
+		targetNumber.replace('-','');
+	</script>
+
+	<var name="CALLID" expr="'<sess:attribute name="callid"/>'" />
+
+	<var name="exitReason" expr="''" />
+
+	<%
+	// retrieve iCallRouting from servlet context
+	String dnis = (String) session.getAttribute("DNIS");
+	String xmlKey = (String) session.getAttribute("xmlKey");
+	java.util.Hashtable hs = (java.util.Hashtable) this.getServletContext().getAttribute(
+				"callRoutingTable");
+	com.ibm.ivr.framework.model.CallRoutingType iCallRouting = (com.ibm.ivr.framework.model.CallRoutingType) hs.get(xmlKey);
+	%>
+	<form>
+		<block>
+			<assign name="application.returnURL"
+				expr="'<req:attribute name="returnURL"/>'" />
+		</block>
+
+		<block>
+			<sess:equalsAttribute name="centerStatus" match="holiday">
+				<ivr:audio src="${requestScope.holidayAudioFile}"
+						tts="${requestScope.holidayAudioTTS}" />
+				<submit
+					next="<%=request.getContextPath()%>/ExitServlet?exitReason=CenterHoliday" />
+			</sess:equalsAttribute>
+			<sess:equalsAttribute name="centerStatus" match="closed">
+				<ivr:audio src="${requestScope.closedAudioFile}"
+						tts="${requestScope.closedAudioTTS}" />
+				<submit
+					next="<%=request.getContextPath()%>/ExitServlet?exitReason=CenterClosed" />
+			</sess:equalsAttribute>
+		</block>
+	</form>
+
+	<catch event="error.badfetch">
+		<app:equalsInitParameter name="ivrPlatform" match="GVP"
+			ignoreCase="true">
+			<log posturl="<c:out value="${applicationScope.globalProp.staticVXMLDir}"/>Log.asp">
+				<value
+					expr="'VXMLAppError: ' + telera.error.description" />
+			</log>
+		</app:equalsInitParameter>
+		<app:equalsInitParameter name="ivrPlatform" match="WVR"
+			ignoreCase="true">
+			<log>
+				<value expr="CALLID + 'VXMLAppError: ' + _message" />
+			</log>
+		</app:equalsInitParameter>
+		<exit/>
+	</catch>
+
+</vxml>

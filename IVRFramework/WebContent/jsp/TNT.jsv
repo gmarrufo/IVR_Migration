@@ -1,0 +1,351 @@
+<?xml version="1.0" encoding ="iso-8859-1"?>
+<!-- Version 09/09/2010 -->
+
+<%@ page errorPage="core/TNTError.jsv" %>
+
+<%@ taglib uri="http://jakarta.apache.org/taglibs/request-1.0" prefix="req" %>
+<%@ taglib uri="http://jakarta.apache.org/taglibs/response-1.0" prefix="res" %>
+<%@ taglib uri="http://jakarta.apache.org/taglibs/application-1.0" prefix="app" %>
+<%@ taglib uri="http://jakarta.apache.org/taglibs/session-1.0" prefix="sess" %>
+<%@ taglib uri="http://java.sun.com/jsp/jstl/core" prefix="c" %>
+<%@ taglib prefix="fn" uri="http://java.sun.com/jsp/jstl/functions" %>
+
+<%@ taglib uri="/WEB-INF/tld/ibm_ivr_framework.tld"   prefix="ivr" %>
+
+<%response.setDateHeader("Expires", 0);
+			response.setHeader("Cache-Control", "no-cache");
+			response.setHeader("Pragma", "no-cache");
+
+			%>
+<req:request id="req" />
+
+<vxml version="2.0" xml:lang="en-US" xmlns="http://www.w3.org/2001/vxml"
+	application="<%=request.getContextPath()%>/jsp/Root.jsv">
+	<%@ page contentType="application/voicexml+xml" %>
+
+	<meta name="GENERATOR" content="Voice Toolkit for WebSphere Studio" />
+	<!-- Place VoiceXML JSP (.jsv) content here. -->
+	<!-- TNT.jsv -->
+
+	<var name="CALLID" expr="'<sess:attribute name="callid"/>'" />
+
+	<var name="exitReason" expr="''" />
+	<var name="bufferCleared" expr="'false'" />
+
+	<!-- typical dir on WVR: file:///xxxxx/vxml/ -->
+	<!-- typical dir on GVP: http://localhost:80/xxxxx/vxml -->
+	<var name="staticVXMLDir" expr="'<c:out value="${applicationScope.globalProp.staticVXMLDir}"/>'"/>
+
+	<app:equalsInitParameter name="ctiEnabled" match="true"
+		ignoreCase="true">
+		<req:existsAttribute name="attachDataNeeded">
+			<form>
+				<!-- Attach the data -->
+				<app:equalsInitParameter name="ivrPlatform" match="GVP"
+					ignoreCase="true">
+					<!-- CUSTOMIZABLE: the following shows the example using object available on GVP platform -->
+					<!-- attachedString is not supported yet. coding is needed to parse the string to separate key and value pairs -->
+					<object name="attachUData"
+						classid="CRData:genericAction">
+						<param name="IServer_Action" value="UData" />
+						<c:forEach items="${sessionScope.attachedData}"
+							var="data">
+							<param name="<c:out value="${data.key}" />"
+								value="<c:out value="${data.value}" />" />
+						</c:forEach>
+					</object>
+				</app:equalsInitParameter>
+
+				<app:equalsInitParameter name="ivrPlatform" match="WVR"
+					ignoreCase="true">
+					<!-- CUSTOMIZABLE: depends on the interface of the wrapper app to access the I-server driver API functions -->			
+					<%java.util.HashMap attachedData = (java.util.HashMap) session.getAttribute("attachedData");
+					String attachedString = (String) session.getAttribute("attachedString");
+					if (!attachedData.isEmpty() || attachedString != null) {//if any key/value pair exists in attachedData map or attachedString is set
+						String data = "";
+						if (attachedString != null) data = attachedString;
+						else{
+						    java.util.Iterator keys = (java.util.Iterator)attachedData.keySet().iterator(); 
+						    while (keys.hasNext()){
+						    	String key = (String)keys.next();
+						    	data += "#" + key + "#" + attachedData.get(key);
+						    }
+						}
+						pageContext.setAttribute("attData",data);
+						%>
+						<c:set var="escapedData" scope="page" value="${fn:escapeXml(attData)}"/>
+						<subdialog srcexpr="staticVXMLDir + 'genesys.vxml#attachData'" name="attachUData" maxage="0">
+							<param name="instrInput" expr="'&lt;`ATTACHDATANAME`=`<%=pageContext.getAttribute("escapedData")%>`&gt;'"/>
+						</subdialog>
+					<%}%>
+				</app:equalsInitParameter>
+
+				<!-- if attach data operation failed, still continue transferring-->
+				<catch event="error" count="1">
+					<goto next="#Transfer" />
+				</catch>
+
+				<filled>
+					<goto next="#Transfer" />
+				</filled>
+			</form>
+		</req:existsAttribute>
+	</app:equalsInitParameter>
+
+	<form id="Transfer">
+		<% String TNT = ((String)request.getAttribute("TNT")).trim(); %>
+		<property name="bargein" value="false"/>
+		<req:equalsAttribute name="defaultRouting" match="queuecall">
+		<!-- CUSTOMIZABLE: only needed if using genesys queuecall, this is only for playing the right audio  -->
+			<block>
+				<% if (session.getAttribute("transferAudioHelper") != null) {
+				%>	
+				<ivr:audio
+					src="${sessionScope.transferAudioHelper.audioFiles}"
+					tts="${sessionScope.transferTTS}" />
+				<%}else {%>
+				<audio
+				src="<c:out value="${applicationScope.globalProp.audioFileRoot}"/>/<c:out value="${sessionScope.iAudioDir}"/>/<c:out value="${sessionScope.LANG}"/>/TransferToAgent${applicationScope.globalProp.audioFileExtension}" />
+				<%}%>
+			</block>
+		</req:equalsAttribute>
+
+		<app:equalsInitParameter name="ivrPlatform" match="GVP"
+			ignoreCase="true">
+			<field cond="bufferCleared == 'false'">
+   				<prompt timeout="0" xml:lang="en-US">
+					<audio src="<jsp:getProperty name="req" property="contextPath"/>/audio/Silence100.au"/>
+				</prompt>
+				<grammar mode="dtmf" version="1.0" root="digits">
+					<rule id="digits">
+						<ruleref special="NULL"/><tag><![CDATA[$="";]]></tag>
+						<item repeat="1-10">
+							<ruleref uri="#digit" />
+							<tag><![CDATA[$=$+$digit;]]></tag>
+						</item>
+					</rule>
+
+					<rule id="digit">
+						<one-of>
+							<item>0<tag><![CDATA[$="0";]]></tag></item>
+							<item>1<tag><![CDATA[$="1";]]></tag></item>
+							<item>2<tag><![CDATA[$="2";]]></tag></item>
+							<item>3<tag><![CDATA[$="3";]]></tag></item>
+							<item>4<tag><![CDATA[$="4";]]></tag></item>
+							<item>5<tag><![CDATA[$="5";]]></tag></item>
+							<item>6<tag><![CDATA[$="6";]]></tag></item>
+							<item>7<tag><![CDATA[$="7";]]></tag></item>
+							<item>8<tag><![CDATA[$="8";]]></tag></item>
+							<item>9<tag><![CDATA[$="9";]]></tag></item>
+						</one-of>
+					</rule>
+
+				</grammar>
+    			<catch event="nomatch noinput">
+					 <assign name="bufferCleared" expr="'true'"/>
+      				 <goto nextitem="transfer"/>
+  				</catch>
+			</field>
+		</app:equalsInitParameter>
+
+		<app:equalsInitParameter name="ivrPlatform" match="WVR"
+			ignoreCase="true">
+       		<block cond="bufferCleared == 'false'">
+           		<prompt bargein="false">
+              		<audio src="<jsp:getProperty name="req" property="contextPath"/>/audio/Silence100.au"/>
+            	</prompt>
+				<assign name="bufferCleared" expr="'true'"/>
+            	<goto nextitem="transfer"/>
+          	</block>	
+		</app:equalsInitParameter>
+
+		<app:equalsInitParameter name="ivrPlatform" match="GVP"
+				ignoreCase="true">
+
+			<field name="transfer" modal="true">
+				<prompt timeout="0.1s">
+					<value mode="dtmfplay" expr="'*8'" xmlns="http://www.telera.com/vxml/2.0/ext/20020430"/>
+					<!-- CUSTOMIZABLE: the 300ms silence file will be saved on GVP platform under special dir
+										since this form is normally called under badfetch error -->
+					<audio src="<c:out value="${applicationScope.globalProp.staticVXMLDir}"/>Silence300.au" />
+					<value mode="dtmfplay" expr="'<%=TNT%>'" xmlns="http://www.telera.com/vxml/2.0/ext/20020430"/>
+				</prompt> 
+				<grammar mode="dtmf" version="1.0" root="txfRoot">
+					<rule id="txfRoot" scope="public">
+						<one-of>
+							<item>
+								#
+							</item>
+						</one-of>
+					</rule>
+				</grammar>
+				<noinput>
+					<goto nextitem="exit"/>
+				</noinput>
+				<nomatch>
+					<goto nextitem="exit"/>
+				</nomatch>
+				<filled>
+					<goto nextitem="exit"/>
+				</filled>
+			</field>
+		</app:equalsInitParameter>
+
+		<app:equalsInitParameter name="ivrPlatform" match="WVR"
+				ignoreCase="true">
+
+				<req:equalsAttribute name="defaultRouting" match="true" ignoreCase="true">
+					<transfer name="transfer" dest="tel:<sess:attribute name="converseAgentPrefix"/><c:out value="<%=TNT%>"/>;phone-context=<c:out value="${applicationScope.globalProp.phoneContext}"/>" bridge="false">
+						<filled>
+							<assign name="converseTransfer" expr="'succeeded'"/>
+							<submit next="ExitServlet" namelist="exitReason converseTransfer" />
+						</filled>
+						<error>
+							<assign name="exitReason"
+								expr="exitReason + '-ConverseTransferFailed'" />
+							<submit next="ExitServlet" namelist="exitReason" />
+						</error>
+					</transfer>
+					<catch event="connection.disconnect.transfer">
+						<assign name="converseTransfer" expr="'succeeded'"/>
+						<submit next="ExitServlet" namelist="exitReason converseTransfer" />
+	     			</catch>
+				</req:equalsAttribute>
+				<req:existsAttribute name="defaultRouting" value="false" >
+				<field name="transfer" modal="true">
+				<property name="bargein" value="false"/>
+				<!-- CUSTOMIZABLE: the 300ms silence file and all DTMF tones will be saved on WVR platform under special dir
+									since this form is normally called under badfetch error -->
+					<sess:existsAttribute name="IBDATA">
+					<prompt timeout="5s">	
+					</sess:existsAttribute>
+					<sess:existsAttribute name="IBDATA" value="false">
+					<prompt timeout="0.1s">	
+					</sess:existsAttribute>
+				
+									
+					<audio expr="staticVXMLDir + 'star.au'"/>
+					<audio expr="staticVXMLDir + '8.au'"/>
+					<audio expr="staticVXMLDir + 'Silence300.au'" />
+						
+					<%  
+					   for(int i = 0; i < TNT.length(); i++) {%>
+						<audio expr="staticVXMLDir + '<%=TNT.charAt(i)%>.au'" />
+					<%}%>
+					
+					</prompt> 
+					
+					<grammar mode="dtmf" version="1.0" root="txfRoot">
+						<rule id="txfRoot" scope="public">
+							<one-of>
+								<item>
+									1
+								</item>
+							</one-of>
+						</rule>
+					</grammar>
+					<noinput count="1">
+						<goto nextitem="exit"/>
+					</noinput>
+					<nomatch count="1">
+						<goto nextitem="exit"/>
+					</nomatch>
+					<filled>
+						<sess:existsAttribute name="IBDATA">
+							<goto nextitem="ibdata"/>
+						</sess:existsAttribute>
+						<sess:existsAttribute name="IBDATA" value="false">
+							<goto nextitem="exit"/>
+						</sess:existsAttribute>
+					</filled>
+				
+				</field>
+			</req:existsAttribute>	
+				
+
+			<req:existsAttribute name="defaultRouting" value="false">
+				<sess:existsAttribute name="IBDATA">
+					<field name="ibdata" modal="true">
+						<property name="bargein" value="false"/>
+						<prompt timeout="0.1s">						
+							<audio expr="staticVXMLDir + '1SecSilence.au'" />
+						
+							<% String ibdata = ((String)session.getAttribute("IBDATA")).trim(); 
+							   for(int i = 0; i < ibdata.length(); i++) {%>
+								<audio expr="staticVXMLDir + '<%=ibdata.charAt(i)%>.au'" />
+							<%}%>
+					
+						</prompt> 
+						<grammar mode="dtmf" version="1.0" root="txfRoot1">
+							<rule id="txfRoot1" scope="public">
+								<one-of>
+									<item>
+										#
+									</item>
+								</one-of>
+							</rule>
+						</grammar>
+						<noinput>
+							<goto nextitem="exit"/>
+						</noinput>
+						<nomatch>
+							<goto nextitem="exit"/>
+						</nomatch>
+						<filled>
+							<goto nextitem="exit"/>
+						</filled>
+					</field>		
+				</sess:existsAttribute>
+			</req:existsAttribute>
+		</app:equalsInitParameter>
+
+		<block name="exit">
+			<assign name="exitReason"
+				expr="'<req:attribute name="exitReason"/>'" />
+			<submit next="ExitServlet" namelist="exitReason" />
+		</block>
+	</form>
+
+	<catch event="connection.disconnect.hangup">
+		<assign name="exitReason"
+				expr="'<req:attribute name="exitReason"/>'" />
+		<submit next="ExitServlet" namelist="exitReason" />
+	</catch>
+
+	<catch event="error.badfetch">
+		<app:equalsInitParameter name="ivrPlatform" match="GVP"
+			ignoreCase="true">
+			<log posturl="<c:out value="${applicationScope.globalProp.staticVXMLDir}"/>Log.asp">
+				<value
+					expr="'VXMLAppError: ' + telera.error.description" />
+			</log>
+		</app:equalsInitParameter>
+		<app:equalsInitParameter name="ivrPlatform" match="WVR"
+			ignoreCase="true">
+			<log>
+				<value expr="CALLID + 'VXMLAppError: ' + _message" />
+			</log>
+		</app:equalsInitParameter>
+		<exit/>
+	</catch>
+
+	<catch event="error">
+		<app:equalsInitParameter name="ivrPlatform" match="GVP"
+			ignoreCase="true">
+			<log posturl="<c:out value="${applicationScope.globalProp.staticVXMLDir}"/>Log.asp">
+				<value
+					expr="'VXMLAppError: ' + telera.error.description" />
+			</log>
+		</app:equalsInitParameter>
+		<app:equalsInitParameter name="ivrPlatform" match="WVR"
+			ignoreCase="true">
+			<log>
+				<value expr="CALLID + 'VXMLAppError: ' + _message" />
+			</log>
+		</app:equalsInitParameter>
+		<goto next="#transferAction"/>
+	</catch>
+
+	<%@ include file="TransferAction.jspf" %>
+
+</vxml>

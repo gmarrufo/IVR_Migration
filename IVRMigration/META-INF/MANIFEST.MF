@@ -1,0 +1,4 @@
+Manifest-Version: 1.0
+Main-Class: com.ibm.ivr.eus.migration.Migration
+Class-Path: . antlr-3.2.jar
+

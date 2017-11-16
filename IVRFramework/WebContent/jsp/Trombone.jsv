@@ -1,0 +1,119 @@
+<?xml version="1.0" encoding ="iso-8859-1"?>
+<!-- Version 09/09/2010 -->
+
+<%@ page errorPage="Error.jsv" %>
+
+<%@ taglib uri="http://jakarta.apache.org/taglibs/request-1.0" prefix="req" %>
+<%@ taglib uri="http://jakarta.apache.org/taglibs/response-1.0" prefix="res" %>
+<%@ taglib uri="http://jakarta.apache.org/taglibs/application-1.0" prefix="app" %>
+<%@ taglib uri="http://jakarta.apache.org/taglibs/session-1.0" prefix="sess" %>
+<%@ taglib uri="http://java.sun.com/jsp/jstl/core" prefix="c" %>
+
+<%@ taglib uri="/WEB-INF/tld/ibm_ivr_framework.tld"   prefix="ivr" %>
+
+<%response.setDateHeader("Expires", 0);
+			response.setHeader("Cache-Control", "no-cache");
+			response.setHeader("Pragma", "no-cache");
+%>
+
+<req:request id="req" />
+
+<vxml version="2.0" xml:lang="en-US" xmlns="http://www.w3.org/2001/vxml"
+	application="<%=request.getContextPath()%>/jsp/Root.jsv">
+	<%@ page 
+    contentType="application/voicexml+xml" %>
+	<meta name="GENERATOR" content="Voice Toolkit for WebSphere Studio" />
+	<!-- Place VoiceXML JSP (.jsv) content here. -->
+	<!-- Trombone.jsv -->
+
+	<sess:existsAttribute name="iCallRoutingConfirmed" value="false">
+		<var name="targetNumber"
+			expr="'<c:out value="${applicationScope.globalProp.defaultOperator}"/>'" />
+	</sess:existsAttribute>
+	<sess:existsAttribute name="iCallRoutingConfirmed">
+		<sess:existsAttribute name="iOperator">
+			<var name="targetNumber"
+				expr="'<c:out value="${sessionScope.iOperator.value}"/>'" />
+		</sess:existsAttribute>
+		<sess:existsAttribute name="iOperator" value="false">
+			<var name="targetNumber"
+				expr="'<c:out value="${applicationScope.globalProp.defaultOperator}"/>'" />
+		</sess:existsAttribute>		
+	</sess:existsAttribute>
+
+	<var name="CALLID" expr="'<sess:attribute name="callid"/>'" />
+	<var name="TromboneDest" expr="'<sess:attribute name="TromboneDest"/>'" />
+	<%boolean testCall = ((Boolean) session.getAttribute("testCall")).booleanValue();
+		if (testCall) {%>
+			<var name="LOG" expr="'true'"/>
+		<%} else {%>
+			<var name="LOG" expr="'false'"/>
+		<%}%>
+	<var name="TromboneResult" expr="'999'" />
+	<var name="exitReason" expr="''" />
+
+	<property name="fetchaudio" value="<c:out value="${applicationScope.globalProp.fetchAudioRoot}"/>/<c:out value="${sessionScope.LANG}"/>/<c:out value="${applicationScope.globalProp.fetchAudio}"/>" />
+	
+
+	<%
+	org.apache.log4j.Logger LOGGER = org.apache.log4j.Logger.getLogger(this.getClass());
+	com.ibm.ivr.framework.model.SubMenuType iSubMenu = (com.ibm.ivr.framework.model.SubMenuType) request
+					.getAttribute("iSubMenu");
+	// retrieve iCallRouting from servlet context
+	String dnis = (String) session.getAttribute("DNIS");
+	String xmlKey = (String) session.getAttribute("xmlKey");
+	java.util.Hashtable hs = (java.util.Hashtable) this.getServletContext().getAttribute(
+				"callRoutingTable");
+	com.ibm.ivr.framework.model.CallRoutingType iCallRouting = (com.ibm.ivr.framework.model.CallRoutingType) hs.get(xmlKey);
+	%>
+
+	<form>
+		<req:existsAttribute name="hangupCounter">
+			<catch event="connection.disconnect.hangup">
+				<var name="counter" expr="'<c:out value="${requestScope.hangupCounter}"/>'" />
+				<assign name="exitReason" expr="'Hangup'" />
+				<submit next="<%=request.getContextPath()%>/ExitServlet"
+					namelist="exitReason counter" />
+			</catch>
+		</req:existsAttribute>
+
+		<%String vxml = iSubMenu.getVxml();
+			if (vxml != null) {%>
+		<ivr:vxml properties="<%=vxml%>" />
+		<%}%>
+
+			<object name="stCall" classid="method://com.ibm.wvr.vxml2.NativeAppSupport/invokeStateTable" codetype="javacode-ext">                                                  
+            	<param name="setName" value="VTTrombone" />                      
+                <param name="setEntryPoint" value="start" />        
+                <param name="setParms" expr="new Array(TromboneDest,LOG,TromboneResult)" />
+                <filled>
+					<assign name="TromboneResult" expr="stCall.parms[2]"/>
+                    <log>CompletionCode=<value expr="stCall.completionCode"/></log>
+                    <log>CompletionCodeText=<value expr="stCall.completionCodeText"/></log>
+                    <log>ReturnCode=<value expr="stCall.returnCode"/></log>
+                    <log>NumofParams=<value expr="stCall.parms.length"/></log>
+					<log>State Table Returned=<value expr="TromboneResult"/></log>
+                    
+                    <!-- always going to the Submenu whose name has 'Result' appended to the current submenu name -->
+                    <var name="menuName" expr="'<%=iSubMenu.getName()%>Result'" />
+                    <var name="menuType" expr="'Submenu'" />
+                    <!-- CUSTOMIZABLE: if there is any other var need to be used by later callflow, 
+                    				they can be appended to the dest in the format: "var1:value1;var2:value2" 
+                    				CallRoutingServlet will automaticaly put var1 and var2 as session variable-->
+					<var name="dest" expr="'TromboneReturnCode:' + stCall.returnCode + ';TromboneResult:' + TromboneResult" />
+					<submit next="CallRoutingServlet" namelist="menuName menuType dest" />			
+                </filled>
+				<error>
+						<!-- always going to the Submenu whose name has 'Result' appended to the current submenu name -->
+						<var name="menuName" expr="'<%=iSubMenu.getName()%>Result'" />
+						<var name="menuType" expr="'Submenu'" />
+	                    <!-- CUSTOMIZABLE: if there is any other var need to be used by later callflow, 
+               						they can be appended to the dest in the format: "var1:value1;var2:value2" 
+               						CallRoutingServlet will automaticaly put var1 and var2 as session variable-->
+						<var name="dest" expr="'TromboneReturnCode:ERROR' + ';TromboneResult:' + TromboneResult" />
+						<submit next="CallRoutingServlet" namelist="menuName menuType dest" />
+				</error>
+            </object> 
+	</form>
+
+</vxml>

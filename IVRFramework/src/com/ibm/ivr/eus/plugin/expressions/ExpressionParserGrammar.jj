@@ -1,0 +1,191 @@
+options{  JDK_VERSION = "1.5";
+  LOOKAHEAD = 10; 
+ // FORCE_LA_CHECK = true;   static = false;}PARSER_BEGIN(ExpressionParser)package com.ibm.ivr.eus.plugin.expressions;import java.io.*;import java.util.*;//import org.apache.log4j.Logger; //import com.ibm.ivr.eus.plugin.ExpressionPluginImpl;import com.ibm.ivr.eus.plugin.expressions.Expressions;/** Parses simple expressions. This parser is machine generated using * ExpressionParserGrammar.jj *  * For example usage see main() *   * @author Greg * */public class ExpressionParser{
+	// private static Logger LOGGER = Logger.getLogger(ExpressionPluginImpl.class);    Expressions handler = null;    public String logtoken = "ExpressionParser.";  	public static void main(String args []) throws ParseException  	{
+  	  	
+    	String test1 =
+"x = 'gregsam' ; y=\"x'tom'\" ; POS(y, x + y + x)";   		ExpressionParser parser =  new ExpressionParser(new StringReader(test1));
+   		parser.handler = new Expressions();
+   		String result = parser.statements();
+   		System.out.println(test1+"="+result);
+	}
+
+}PARSER_END(ExpressionParser)SKIP :{  " "| "\r"| "\t"| "\n"}
+SPECIAL_TOKEN:
+{
+  	<COMMENT1: "/*" (~[])* "*/" >
+  | <COMMENT2:"//" (~["\n", "\r"])*>
+}
+TOKEN : /* DELIM */
+{
+  < SEPERATOR : ";" >
+}
+
+TOKEN : /* OPERATORS */{  < PLUS : "+" >| < MINUS : "-" >| < MULTIPLY : "*" >| < DIVIDE : "/" >}TOKEN : /* OPERATORS */
+{
+  < BOOL_OPER : ("==" | "!=" |"NE" | "EQ" | "LT" | "LTEQ" | "GTEQ" | "GT") >
+| < AND : ("&&" | "AND")>
+| < OR : ("||" | "OR") >
+| < BITAND : "&" >
+| < BITOR : "|" >
+}
+
+TOKEN :{
+  < LITERAL1 :  "\"" (~["\""] | "\"\"")* "\"" >
+| < LITERAL2 : "'" (~["'"] | "''")* "'" >  // | < LITERAL3 : "`" (~["`"] | "``")+ "`" >  }
+TOKEN :
+{
+ < #LETTER : [ "a"-"z", "A"-"Z"] >
+| < IDENT : (< LETTER > | "_") (< LETTER > | < DIGIT > | "_")* >
+| < #DIGIT : [ "0"-"9" ] >
+| < NUMBER: (< DIGIT >)+ ("." (< DIGIT >)+)? >
+}
+String expression() :{	String  value = "";	String e1 = "", e2 = "", r1 = "", r2 = "";	Token op = null;	Token t = null;    if(handler.debug) handler.log2("expression->");}{  (  (	e1 = lvalue() "=" e2 = expression()	{	value = handler.setVar(e1, e2);	 })|(	r1 = relation() {value = r1;} 	(   		/* op = ("&&" | "&" | "||" | "|")? */	    (	      op = < AND >	    | op = < OR >	    )	    {	 	    if(handler.debug) handler.log2(" " + op.image + " ");		}	  	r2 = relation() {	value = handler.relation(value, op.image, r2);	 }	)*))	{  	    //if(handler.debug) handler.log2(")");  		return value;	}}String relation() :{	String r1 = "", r2 = "", value = "";	Token t, op;}{(	  r1=add() {value = r1;} (	  	op= < BOOL_OPER >	    { if(handler.debug) handler.log2(" " + op.image + " "); }	  	r2=add() {	value = handler.relation(value, op.image, r2);	 }	  )*)		{	  return value;	} }
+String literal() :
+{
+  Token t;  String s;
+}
+{
+  (     t = < LITERAL1 > | t = < LITERAL2 > 
+  )
+  {      s = ""+t.image.substring(1, t.image.length() - 1);
+	    if(handler.debug) handler.log2("literal->['"+s+"']");
+	return s;
+  }
+}
+
+//term:	 number | identifier | function | '(' expression ')' |	literal;
+
+Object actualParameters() :
+{
+	String value = "";
+	String e1 = "", e2 = "", r1 = "", r2 = "";
+	Token op = null;
+	Token t = null;
+	List results = new ArrayList();
+  }
+{  
+ 	(
+ 	  e1=expression() 	  {
+ 	    results.add(e1); 	  }
+	  (","	  {	    if(handler.debug) handler.log2(",");	  }	  e2=expression()
+	 	  {
+	 	    results.add(e2);
+	 	  }
+	  )*
+ 	)
+ 	{
+		return results.toArray();
+	}
+}
+
+
+String function() :
+{
+  String fn = "";
+  String value;
+  Object parms = null;
+  Token t;
+  if(handler.debug) handler.log2("function->");}
+{
+  		
+	(
+	  fn = functionname()	    ("("   {// if(handler.debug) handler.log2("(");	    }	  		(parms = actualParameters())? 		")")   { // if(handler.debug) handler.log2(")"); 		} 	  
+		
+	)
+	
+	{
+	   value = handler.function(fn, parms);	 
+	   // if(handler.debug) handler.log2("==>"+value+")");
+		return value;
+	}
+}
+
+
+String term() :
+{
+  String value;
+  Token t;
+  if(handler.debug) handler.log2("term->");}
+{
+  		
+	(
+	  value = number()
+	| value = function()
+	| value = literal()	| ("(" value = expression() ")")
+	| value = identifier()	)
+	
+	{
+		return value;
+	}
+}
+
+String functionname() :{	Token t;    if(handler.debug) handler.log2("functionname->");}{	t = < IDENT >	{	  if(handler.debug) handler.log2(t.image+"(");	  return t.image;	} }
+
+String lvalue() :{	Token t;    if(handler.debug) handler.log2("lvalue->");}{	t = < IDENT >	{	  if(handler.debug) handler.log2(t.image + " = ");	  return t.image;	} }String identifier() :
+{
+	Token t;	String v = "";
+}
+{
+	t = < IDENT >
+	{
+    if(handler.debug) handler.log2("identifier->["+t.image+"]");		if(t.image.equals("true") || t.image.equals("false"))			v = t.image;		else			v = handler.getVar(t.image);
+	  //if(handler.debug) handler.log2(t.image+"->"+v);	  return v;	} 
+}
+
+String statements() :
+{
+	String r1 = "", r2 = null, value = "";
+	Token t, op;
+}    
+{
+  	r1=expression() (
+		( op=< SEPERATOR > ) { if(handler.debug) handler.log2(" " + op.image + " "); }		r2=expression() 
+	)*
+
+	{ 
+	  return r2 == null ? r1 : r2;
+	} 
+}
+	
+
+String add() :
+{	String r1 = "", r2 = "", value = "", opval="+";
+	Token t, op;
+}    
+{  	r1=mult() {value = r1;} (
+		( op=< PLUS >		{		  opval = op.image;		}		 | op = < MINUS >		 {		   opval = op.image;		 }		 		 )	    { if(handler.debug) handler.log2(" " + opval + " "); }		r2=mult()  {	value = handler.math(value, opval, r2);	 }
+	)*
+
+	{
+	  return value;
+	} 
+}
+
+
+
+String mult() :	
+{	String r1 = "", r2 = "", value = "";
+	Token t, op;
+
+}
+{  		r1=term() {value = r1;} (
+			( op=< MULTIPLY > | op = < DIVIDE > ) { if(handler.debug) handler.log2(" " + op.image + " "); }			r2=term() {	value = handler.math(value, op.image, r2);	 }
+		)*
+	{
+	  return value;
+	} 
+}
+
+String number() :
+{
+  Token t;
+}
+{
+  t = < NUMBER >
+  {
+	    if(handler.debug) handler.log2("number->["+t.image+"]");
+		return ""+t.image;
+  }
+}
+

@@ -1,0 +1,243 @@
+<?xml version="1.0" encoding ="iso-8859-1"?>
+<!-- Version 04/07/2010 -->
+<!-- SCS 04/07/2011 170527 made hardcoded fetchtimeout and fetchaudiodelay to be configurable  -->
+
+<%@ taglib uri="http://jakarta.apache.org/taglibs/request-1.0" prefix="req" %>
+<%@ taglib uri="http://jakarta.apache.org/taglibs/response-1.0" prefix="res" %>
+<%@ taglib uri="http://jakarta.apache.org/taglibs/application-1.0" prefix="app" %>
+<%@ taglib uri="http://jakarta.apache.org/taglibs/session-1.0" prefix="sess" %>
+<%@ taglib uri="http://java.sun.com/jsp/jstl/core" prefix="c" %>
+
+<%response.setDateHeader("Expires", 0);
+			response.setHeader("Cache-Control", "no-cache");
+			response.setHeader("Pragma", "no-cache");
+
+			%>
+
+<vxml version="2.0" xml:lang="en-US"
+	xmlns="http://www.w3.org/2001/vxml">
+	<%@ page contentType="application/voicexml+xml" %>
+	<meta name="GENERATOR" content="Voice Toolkit for WebSphere Studio" />
+	<!-- Place VoiceXML JSP (.jsv) content here. -->
+	<!-- Root.jsv -->
+
+	<sess:existsAttribute name="iCallRoutingConfirmed" value="false">
+		<var name="targetNumber"
+			expr="'<c:out value="${applicationScope.globalProp.defaultOperator}"/>'" />
+	</sess:existsAttribute>
+	<sess:existsAttribute name="iCallRoutingConfirmed">
+		<sess:existsAttribute name="iOperator">
+			<var name="targetNumber"
+				expr="'<c:out value="${sessionScope.iOperator.value}"/>'" />
+		</sess:existsAttribute>
+		<sess:existsAttribute name="iOperator" value="false">
+			<var name="targetNumber"
+				expr="'<c:out value="${applicationScope.globalProp.defaultOperator}"/>'" />
+		</sess:existsAttribute>		
+	</sess:existsAttribute>
+
+	<var name="CALLID" expr="'<sess:attribute name="callid"/>'" />
+	<var name="exitReason" expr="''" />
+	<var name="subject" expr="''" />
+	<var name="returnURL" expr="' '" />
+	<var name="sysDifficultyPlayed" />
+
+	<!--CUSTOMIZABLE: assign properties in global.properties as VXML app properties for use in other pages -->
+	<!-- var name="conflevelhigh" expr="<c:out value="${applicationScope.globalProp.confidenceLevelHigh}"/>" / -->
+	<!-- property name="confidencelevel" value="<c:out value="${applicationScope.globalProp.confidenceLevel}"/>" / -->
+
+	<property name="timeout"
+		value="<c:out value="${applicationScope.globalProp.timeout}"/>" />
+	<property name="sensitivity"
+		value="<c:out value="${applicationScope.globalProp.sensitivity}"/>" />
+		
+	<!-- fetchaudio property is set in the individual jsv pages to make sure it is refreshed based on the LANG session var -->
+	<property name="fetchaudiominimum" value="1s" />
+	<!-- SCS - 04/07/2011 - defect 170527 -->
+	<!--  property name="fetchtimeout" value="12s" />  -->
+	<!-- <property name="fetchaudiodelay" value="2s" /> -->
+	<property name="fetchtimeout" value="<c:out value="${applicationScope.globalProp.fetchtimeout}s"/>" />
+	<property name="fetchaudiodelay" value="<c:out value="${applicationScope.globalProp.fetchaudiodelay}s"/>" />
+
+	<!--CUSTOMIZABLE: For DTMF application on GVP platform, this should be set -->
+	<!-- <app:equalsInitParameter name="ivrPlatform" match="GVP"
+		ignoreCase="true">
+		<property name='com.telera.speechenabled' value='false'/>
+	</app:equalsInitParameter> -->
+
+	<!--CUSTOMIZABLE: for defining global operator behavior across all the call flow in the same EAR app-->
+	<!-- <catch event="ivr.event.operator">
+		<goto
+		expr="'<%=request.getContextPath()%>/TransferServlet?reason=Operator&amp;selection=0&amp;dest='+ targetNumber" />
+	</catch>	-->
+
+	<catch event="connection.disconnect.hangup">
+		<goto
+			next="<%=request.getContextPath()%>/ExitServlet?exitReason=Hangup" />
+	</catch>
+
+	<!-- all handlers are copied into the page where the events are thrown and executed in that context -->
+	<catch event="error.badfetch" count="1">
+		<if cond="sysDifficultyPlayed == undefined">
+			<audio
+				src="<c:out value="${applicationScope.globalProp.audioFileRoot}"/>/platform/<c:out value="${sessionScope.LANG}"/>/SysDifficulty${applicationScope.globalProp.audioFileExtension}" />
+		</if>
+
+		<assign name="sysDifficultyPlayed" expr="true"/>
+
+		<app:equalsInitParameter name="ivrPlatform" match="GVP"
+			ignoreCase="true">
+			<log posturl="http://localhost:9810/xxxxx/Log.asp">
+				<value
+					expr="'VXMLAppError: ' + telera.error.description" />
+			</log>
+		</app:equalsInitParameter>
+		<app:equalsInitParameter name="ivrPlatform" match="WVR"
+			ignoreCase="true">
+			<log>
+				<value expr="CALLID + 'VXMLAppError: ' + _message" />
+			</log>
+		</app:equalsInitParameter>
+		<assign name="subject" expr="'VXMLAppError.BadFetch'" />
+		<assign name="exitReason" expr="'VXMLAppError.BadFetch'" />
+
+		<c:if
+			test="${applicationScope.globalProp.transferOnError == 'true'}">
+			<!-- CUSTOMIZABLE: set the parameter into TransferServlet 
+								as required by the application desired transfer behavior -->
+			<goto
+				expr="'<%=request.getContextPath()%>/TransferServlet?agentType=CONVERSEAGENT&amp;reason=VXMLAppError.BadFetch&amp;audio=../../platform/<c:out value="${sessionScope.LANG}"/>/TransferToAgent${applicationScope.globalProp.audioFileExtension}&amp;dest=' + targetNumber" />
+		</c:if>
+		<c:if
+			test="${applicationScope.globalProp.transferOnError != 'true'}">
+			<audio
+				src="<c:out value="${applicationScope.globalProp.audioFileRoot}"/>/platform/<c:out value="${sessionScope.LANG}"/>/TryAgainLater${applicationScope.globalProp.audioFileExtension}" />
+			<audio
+				src="<c:out value="${applicationScope.globalProp.audioFileRoot}"/>/platform/<c:out value="${sessionScope.LANG}"/>/Goodbye${applicationScope.globalProp.audioFileExtension}" />
+			
+			<submit next="<%=request.getContextPath()%>/ExitServlet"
+				namelist="exitReason" />
+		</c:if>
+
+	</catch>
+
+	<catch event="error.badfetch" count="2">
+
+		<app:equalsInitParameter name="ivrPlatform" match="GVP"
+			ignoreCase="true">
+			<log posturl="http://localhost:9810/xxxxx/Log.asp">
+				<value
+					expr="'VXMLAppError: ' + telera.error.description" />
+			</log>
+		</app:equalsInitParameter>
+		<app:equalsInitParameter name="ivrPlatform" match="WVR"
+			ignoreCase="true">
+			<log>
+				<value expr="CALLID + 'VXMLAppError: ' + _message" />
+			</log>
+		</app:equalsInitParameter>
+
+		<c:if
+			test="${applicationScope.globalProp.transferOnError == 'true'}">
+			<audio
+				src="<c:out value="${applicationScope.globalProp.audioFileRoot}"/>/platform/<c:out value="${sessionScope.LANG}"/>/TransferToAgent${applicationScope.globalProp.audioFileExtension}" />
+
+			<goto next="#transferAction" />
+		</c:if>
+
+		<exit />
+	</catch>
+
+	<catch event="error.badfetch" count="3">
+
+		<app:equalsInitParameter name="ivrPlatform" match="GVP"
+			ignoreCase="true">
+			<log posturl="http://localhost:9810/xxxxx/Log.asp">
+				<value
+					expr="'VXMLAppError: ' + telera.error.description" />
+			</log>
+		</app:equalsInitParameter>
+		<app:equalsInitParameter name="ivrPlatform" match="WVR"
+			ignoreCase="true">
+			<log>
+				<value expr="CALLID + 'VXMLAppError: ' + _message" />
+			</log>
+		</app:equalsInitParameter>
+
+		<exit />
+	</catch>
+
+	<!-- CUSTOMIZABLE: define the how to handle queue call error on GVP platform-->
+	<!-- <app:equalsInitParameter name="ivrPlatform" match="GVP"
+		ignoreCase="true">
+		<catch event="error.com.telera.queue" count="1">
+			<var name="errorMessage" expr="telera.error.description" />
+			<var name="defaultRouting" expr="'queuecall'" />
+			<assign name="exitReason" expr="'VXMLAppError.QueueCall'" />
+			<submit next="<%=request.getContextPath()%>/TNTServlet"
+				namelist="exitReason defaultRouting errorMessage" />
+		</catch>
+	</app:equalsInitParameter> -->
+
+	<catch event="error" count="1">
+		<if cond="sysDifficultyPlayed == undefined">
+			<audio
+				src="<c:out value="${applicationScope.globalProp.audioFileRoot}"/>/platform/<c:out value="${sessionScope.LANG}"/>/SysDifficulty${applicationScope.globalProp.audioFileExtension}" />
+		</if>
+
+		<assign name="sysDifficultyPlayed" expr="true"/>
+		
+		<app:equalsInitParameter name="ivrPlatform" match="GVP"
+			ignoreCase="true">
+			<log posturl="http://localhost:9810/xxxxx/Log.asp">
+				<value
+					expr="'VXMLAppError: ' + telera.error.description" />
+			</log>
+		</app:equalsInitParameter>
+		<app:equalsInitParameter name="ivrPlatform" match="WVR"
+			ignoreCase="true">
+			<log>
+				<value expr="CALLID + 'VXMLAppError: ' + _message" />
+			</log>
+		</app:equalsInitParameter>
+		<assign name="exitReason" expr="'VXMLAppError.General'" />
+		<c:if
+			test="${applicationScope.globalProp.transferOnError == 'true'}">
+			<!-- CUSTOMIZABLE: this is for any error other than badfetch error, set the parameter into TransferServlet 
+								as required by the application desired transfer behavior -->
+			<goto
+				expr="'<%=request.getContextPath()%>/TransferServlet?agentType=CONVERSEAGENT&amp;reason=VXMLAppError.General&amp;audio=../../platform/<c:out value="${sessionScope.LANG}"/>/TransferToAgent${applicationScope.globalProp.audioFileExtension}&amp;dest=' + targetNumber" />
+		</c:if>
+		<c:if
+			test="${applicationScope.globalProp.transferOnError != 'true'}">
+			<audio
+				src="<c:out value="${applicationScope.globalProp.audioFileRoot}"/>/platform/<c:out value="${sessionScope.LANG}"/>/TryAgainLater${applicationScope.globalProp.audioFileExtension}" />
+			<audio
+				src="<c:out value="${applicationScope.globalProp.audioFileRoot}"/>/platform/<c:out value="${sessionScope.LANG}"/>/Goodbye${applicationScope.globalProp.audioFileExtension}" />
+			
+			<submit next="<%=request.getContextPath()%>/ExitServlet"
+				namelist="exitReason" />
+		</c:if>
+
+	</catch>
+
+	<catch event="error" count="2">
+		<app:equalsInitParameter name="ivrPlatform" match="GVP"
+			ignoreCase="true">
+			<log posturl="http://localhost:9810/xxxxx/Log.asp">
+				<value
+					expr="'VXMLAppError: ' + telera.error.description" />
+			</log>
+		</app:equalsInitParameter>
+		<app:equalsInitParameter name="ivrPlatform" match="WVR"
+			ignoreCase="true">
+			<log>
+				<value expr="CALLID + 'VXMLAppError: ' + _message" />
+			</log>
+		</app:equalsInitParameter>
+		<exit />
+	</catch>
+
+	<%@ include file="TransferAction.jspf" %>
+
+</vxml>

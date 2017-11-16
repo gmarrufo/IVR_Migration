@@ -1,0 +1,159 @@
+<?xml version="1.0" encoding ="iso-8859-1"?>
+<!-- Version 09/09/2010 -->
+
+<%@ page errorPage="../Error.jsv" %>
+
+<%@ taglib uri="http://jakarta.apache.org/taglibs/request-1.0" prefix="req" %>
+<%@ taglib uri="http://jakarta.apache.org/taglibs/response-1.0" prefix="res" %>
+<%@ taglib uri="http://jakarta.apache.org/taglibs/application-1.0" prefix="app" %>
+<%@ taglib uri="http://jakarta.apache.org/taglibs/session-1.0" prefix="sess" %>
+<%@ taglib uri="http://java.sun.com/jsp/jstl/core" prefix="c" %>
+
+<%@ taglib uri="/WEB-INF/tld/ibm_ivr_framework.tld"   prefix="ivr" %>
+
+<%response.setDateHeader("Expires", 0);
+			response.setHeader("Cache-Control", "no-cache");
+			response.setHeader("Pragma", "no-cache");
+%>
+
+
+<%@page import="com.ibm.ivr.framework.model.AudioComplexType"%><req:request id="req" />
+
+<vxml version="2.0" xml:lang="en-US" xmlns="http://www.w3.org/2001/vxml"
+	application="<%=request.getContextPath()%>/jsp/Root.jsv">
+	<%@ page 
+    contentType="application/voicexml+xml" %>
+	<meta name="GENERATOR" content="Voice Toolkit for WebSphere Studio" />
+	<!-- Place VoiceXML JSP (.jsv) content here. -->
+	<!-- RoutingPromptPlay.jsv -->
+
+	<sess:existsAttribute name="iCallRoutingConfirmed" value="false">
+		<var name="targetNumber"
+			expr="'<c:out value="${applicationScope.globalProp.defaultOperator}"/>'" />
+	</sess:existsAttribute>
+	<sess:existsAttribute name="iCallRoutingConfirmed">
+		<sess:existsAttribute name="iOperator">
+			<var name="targetNumber"
+				expr="'<c:out value="${sessionScope.iOperator.value}"/>'" />
+		</sess:existsAttribute>
+		<sess:existsAttribute name="iOperator" value="false">
+			<var name="targetNumber"
+				expr="'<c:out value="${applicationScope.globalProp.defaultOperator}"/>'" />
+		</sess:existsAttribute>		
+	</sess:existsAttribute>
+
+	<var name="CALLID" expr="'<sess:attribute name="callid"/>'" />
+
+	<var name="exitReason" expr="''" />
+
+	<!-- Hold SubMenu Selection to pass into jsv  -->
+	<var name="menuName" expr="''" />
+	<var name="mode" expr="''" />
+	<var name="menuType" expr="''" />
+	<var name="dest" expr="''" />
+	<var name="destType" expr="''" />
+	<var name="handler" expr="''" />
+	<var name="audio" expr="''" />
+	<var name="tts" expr="''" />
+	<var name="dnis" expr="''" />
+	<var name="reason" expr="''" />
+	<var name="selection" expr="''" />
+	<var name="utterance" expr="''" />
+	<var name="counter" expr="''" />
+	<var name="recording" expr="'none'"/>
+	<var name="agentType" expr="''" />
+
+	<property name="termchar" value="" />
+	<property name="fetchaudio" value="<c:out value="${applicationScope.globalProp.fetchAudioRoot}"/>/<c:out value="${sessionScope.LANG}"/>/<c:out value="${applicationScope.globalProp.fetchAudio}"/>" />
+	
+
+	<sess:equalsAttribute name="mode" match="speech"
+		ignoreCase="true">
+		<property name="inputmodes" value="voice" />
+	</sess:equalsAttribute>
+
+	<sess:equalsAttribute name="mode" match="DTMF" ignoreCase="true">
+		<property name="inputmodes" value="dtmf" />
+	</sess:equalsAttribute>
+
+	<sess:equalsAttribute name="mode" match="hybrid"
+		ignoreCase="true">
+		<property name="inputmodes" value="voice dtmf" />
+	</sess:equalsAttribute>
+
+	<%
+	org.apache.log4j.Logger LOGGER = org.apache.log4j.Logger.getLogger(this.getClass());
+	com.ibm.ivr.framework.model.SubMenuType iSubMenu = (com.ibm.ivr.framework.model.SubMenuType) request
+					.getAttribute("iSubMenu");
+	// retrieve iCallRouting from servlet context
+	String dnis = (String) session.getAttribute("DNIS");
+	String xmlKey = (String) session.getAttribute("xmlKey");
+	java.util.Hashtable hs = (java.util.Hashtable) this.getServletContext().getAttribute(
+				"callRoutingTable");
+	com.ibm.ivr.framework.model.CallRoutingType iCallRouting = (com.ibm.ivr.framework.model.CallRoutingType) hs.get(xmlKey);
+	%>
+
+	<%@ include file="GlobalCommands.jspf" %>
+	
+	<form>
+		<req:existsAttribute name="hangupCounter">
+			<catch event="connection.disconnect.hangup">
+				<var name="counter" expr="'<c:out value="${requestScope.hangupCounter}"/>'" />
+				<assign name="exitReason" expr="'Hangup'" />
+				<submit next="<%=request.getContextPath()%>/ExitServlet"
+					namelist="exitReason counter" />
+			</catch>
+		</req:existsAttribute>
+
+		<%String vxml = iSubMenu.getVxml();
+			if (vxml != null) {%>
+		<ivr:vxml properties="<%=vxml%>" />
+		<%}%>
+
+		<block>
+
+			<%//check dynamic status message%>
+			<%com.ibm.ivr.framework.plugin.StatusMessage statusMessage = (com.ibm.ivr.framework.plugin.StatusMessage)request.getAttribute("statusMessage");
+			  if (statusMessage != null){%>
+			  	<prompt bargein="<%=(statusMessage.isBargeinFlag()?"true":"false")%>">
+				  <ivr:audio
+					src="${requestScope.statusMessage.audioURL}" type="status"/>
+				</prompt>
+			<%}%>
+					
+		<% java.util.List audios = iSubMenu.getAudio();
+		   com.ibm.ivr.framework.plugin.StatusMessage[] sMsgs = (com.ibm.ivr.framework.plugin.StatusMessage[])request.getAttribute("statusMessageList");
+			if (audios != null) {%>
+				<%for(int i = 0; i < audios.size(); i++) {
+					AudioComplexType audio = (AudioComplexType) audios.get(i);
+					if ("STATUS".equalsIgnoreCase(audio.getType_())){
+						if(sMsgs[i] != null){%>
+			  	<prompt bargein="<%=(sMsgs[i].isBargeinFlag()?"true":"false")%>">
+				  	<ivr:audio
+						src="<%=sMsgs[i].getAudioURL()%>" type="status"/>
+				</prompt>					
+					<%	}
+					}else{%>
+				<prompt>
+					<ivr:audio index="<%=i%>"/>
+				</prompt>
+		<%
+				}%>
+			<%}
+			}%>
+			
+			<%String endCall = iSubMenu.getEndCall();
+			if (endCall != null && endCall.equalsIgnoreCase("true")) { %>	
+				<goto next="<%=request.getContextPath()%>/ExitServlet?exitReason=CallerExit" />
+			<%}
+
+			if (endCall == null || endCall.equalsIgnoreCase("false")) { %>	
+				<ivr:routing type="MenuDefault" />
+			<%}%>
+
+		</block>
+	</form>
+
+	<%@ include file="../TransferAction.jspf" %>
+
+</vxml>

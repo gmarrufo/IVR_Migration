@@ -1,0 +1,43 @@
+log4j.rootLogger=info, R, CONSOLE
+log4j.appender.CONSOLE=org.apache.log4j.ConsoleAppender
+log4j.appender.CONSOLE.layout=org.apache.log4j.PatternLayout
+#log4j.appender.CONSOLE.layout.ConversionPattern=%5p %-100m at %c.%M(%F:%L)%n
+log4j.appender.CONSOLE.layout.ConversionPattern=%5p %m%n
+
+log4j.appender.R=org.apache.log4j.RollingFileAppender
+log4j.appender.R1=org.apache.log4j.DailyRollingFileAppender
+log4j.appender.R2=org.apache.log4j.DailyRollingFileAppender
+
+# BEGIN REPLACED SECTION
+# END REPLACED SECTION
+
+# BEGIN SECTION APPNAME_IVR
+log4j.appender.R.File=/APPNAME/ivr/log/call.log
+log4j.appender.R1.File=/APPNAME/ivr/stats/stats.log
+log4j.appender.R2.File=/APPNAME/ivr/log/callroute.log
+# END SECTION
+
+APP_SECTION
+
+log4j.appender.R.MaxFileSize=5MB
+# Keep one backup file
+log4j.appender.R.MaxBackupIndex=5
+
+log4j.appender.R.layout=org.apache.log4j.PatternLayout
+log4j.appender.R.layout.ConversionPattern=%5p [%d] [%t] (%c) - %m%n
+
+log4j.logger.com.APPNAME.ivr=DEBUG
+
+log4j.appender.R1.DatePattern=.yyyy-MM
+
+log4j.appender.R1.layout=org.apache.log4j.PatternLayout
+log4j.appender.R1.layout.ConversionPattern= [%d] - %m%n
+
+log4j.logger.com.APPNAME.ivr.utilities.Stats=INFO, R1
+
+log4j.appender.R2.DatePattern=.yyyy-MM
+
+log4j.appender.R2.layout=org.apache.log4j.PatternLayout
+log4j.appender.R2.layout.ConversionPattern= [%d] - %m%n
+
+log4j.logger.com.APPNAME.ivr.utilities.CallRouteStats=INFO, R2

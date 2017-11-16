@@ -1,0 +1,9 @@
+The <Set> element enables the application developer to set variable values
+The <Set> element also enables the application developer to evaluate expressions
+The syntax for expressions is described in the chapter on expressions
+
+The following example sets a variable value: <Set var="varname" expr="A literal string"/>
+To evaluate an expression, enclose the expression inside parenthesis. For example:
+The following example evaluates an expression: <Set var="varname" expr="(expression)"/>
+In the above example, "expression" is any valid expression as described in the section on expressions
+Note: To evaluate an expression, the expr attribute must begin AND end with parenthesis. If there is a space at the beginning or end, it will not be evaluated as an expression, it will be treated as a literal string

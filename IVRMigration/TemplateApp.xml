@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CallRouting name="$appName" releaseVersion="1.0" fileVersion="@(#) 3/9/11 11:09:43 1.3 @(#)"
+	audioDir="prompt/$appName"  statusAudioDir="status/$appName" start="COMMON_GLOBALS" startMode="DTMF"
+	globalRepeatKey=""	globalBackupKey=""	main="COMMON_GLOBALS"
+	common="$COMMON"
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" 
+	xmlns="http://ibm.com/ivr/framework/model" 
+	xsi:schemaLocation="http://ibm.com/ivr/framework/model IVRFramework.xsd ">
+	<Operator></Operator>
+$MENUS
+</CallRouting>

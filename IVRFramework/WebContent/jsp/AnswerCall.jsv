@@ -1,0 +1,213 @@
+<?xml version="1.0" encoding="iso-8859-1"?>
+<!-- Version 04/06/2011 -->
+<!-- SCS added customization for EUS  dnisSource == 'converse' -->
+<!-- SCS added port work around to set port to 1  -->
+<!-- SCS REMOVED port work around to set port to 1  -->
+<!-- SCS 4/06/2011 defect 170523  modified to remove up to 10 blanks not max of 4 from DNIS -->
+
+<%@ page errorPage="Error.jsv" %>
+<%@ taglib uri="http://jakarta.apache.org/taglibs/request-1.0" prefix="req" %>
+<%@ taglib uri="http://jakarta.apache.org/taglibs/response-1.0" prefix="res" %>
+<%@ taglib uri="http://jakarta.apache.org/taglibs/application-1.0" prefix="app" %>
+<%@ taglib uri="http://jakarta.apache.org/taglibs/session-1.0" prefix="sess" %>
+<%@ taglib uri="http://java.sun.com/jsp/jstl/core" prefix="c" %>
+
+<% 
+	response.setDateHeader("Expires",0);
+	response.setHeader("Cache-Control","no-cache");
+	response.setHeader("Pragma","no-cache");
+%>	
+
+<vxml version="2.0" xml:lang="en-US" xmlns="http://www.w3.org/2001/vxml" application="<%=request.getContextPath()%>/jsp/Root.jsv">
+	<%@ page contentType="application/voicexml+xml" %>
+
+	<meta name="GENERATOR" content="Voice Toolkit for WebSphere Studio" />
+	<!-- Place VoiceXML JSP (.jsv) content here. -->
+	<!-- AnswerCall.jsv -->
+ 
+	<var name="port" expr="''" />
+	<var name="DNIS" expr="''" />
+	<var name="ANI" expr="''" />
+	<var name="CALLID" expr="''" />
+	
+	<!-- The script below verifies that the "session.ibm" object exists and then
+		sets the port to session.ibm.line_address.toString();
+		This enables the code to work seamlessly (without crash) in environments where the
+		session.ibm.line_address variable does not exist, such as the voice toolkit browser
+	 -->
+	<!-- <script>
+		if('' + (typeof session) != '' + undefined) {
+			if('' + (typeof session.ibm) != '' + undefined) {
+				port = session.ibm.line_address.toString();
+			}
+		}
+	}
+	</script> -->
+
+	<%  java.util.Properties prop = (java.util.Properties) this.getServletContext()
+			.getAttribute("mappingProp");
+		java.util.Enumeration e = prop.keys();
+		StringBuffer portList = new StringBuffer();
+		while (e.hasMoreElements()){
+			String key = e.nextElement().toString();
+			if (key.startsWith("port.")) portList.append(key.substring(5)).append(com.ibm.ivr.framework.utilities.Common.SPACE);
+		}
+	%>
+	
+	<var name="portlist" expr="'<%=portList.toString()%>'"/>
+	<var name="dnisSource" expr="'<c:out value="${applicationScope.globalProp.dnisSource}"/>'"/>
+	
+	<property name="inputmodes" value="dtmf" />
+	<property name="interdigittimeout" value="3s" />
+	<property name="termtimeout" value="0s" />
+
+	<form>
+		<block>
+			<app:equalsInitParameter name="ivrPlatform" match="WVR" ignoreCase="true">
+				<assign name="port" expr="session.ibm.line_address"/>
+			</app:equalsInitParameter>
+			
+			<if cond="portlist.indexOf(port) != -1">
+				<!-- port is defined in the ivrmapping.properties -->
+					<log> <value expr="port"/> </log>
+					<submit next="EntryPointServlet" namelist="port"/>
+			<else/>
+				<if cond="dnisSource == 'vxml' || dnisSource == 'converse'" >
+					<assign name="DNIS" expr="session.connection.local.uri"/>
+					<app:equalsInitParameter name="ivrPlatform" match="WVR"
+						ignoreCase="true">
+						<assign name="DNIS" expr="DNIS.substring(4)"/>  
+					</app:equalsInitParameter>
+					
+					<assign name="ANI" expr="session.connection.remote.uri"/>
+					<app:equalsInitParameter name="ivrPlatform" match="WVR"
+						ignoreCase="true">
+						<assign name="ANI" expr="ANI.substring(4)"/>  
+					</app:equalsInitParameter>
+					<submit next="EntryPointServlet" namelist="ANI DNIS" />
+				</if>
+			</if>
+		</block>
+		<field name="DNIS">
+			<!-- CUSTOMIZABLE: grammar can be customized based on the number of DNIS digits sent from switch-->
+			<grammar version="1.0" mode="dtmf" root="dnis_digits" tag-format="semantics/1.0">
+
+				<rule id="dnis_digits">
+					<item repeat="3-10">
+						<ruleref uri="#digit" />
+					</item>
+				</rule>
+				<rule id="digit">
+					<one-of>
+						<item>0</item>
+						<item>1</item>
+						<item>2</item>
+						<item>3</item>
+						<item>4</item>
+						<item>5</item>
+						<item>6</item>
+						<item>7</item>
+						<item>8</item>
+						<item>9</item>
+					</one-of>
+				</rule>
+			</grammar>
+
+			<prompt timeout="10s"/>
+			
+			<catch event="noinput nomatch">
+				<assign name="DNIS" expr="''"/>
+				<submit next="EntryPointServlet" namelist="DNIS" />
+			</catch>
+			
+			<filled>
+				<script>DNIS = DNIS.replace(' ',''); DNIS = DNIS.replace(' ',''); DNIS = DNIS.replace(' ',''); DNIS = DNIS.replace(' ','');
+				DNIS = DNIS.replace(' ',''); DNIS = DNIS.replace(' ',''); DNIS = DNIS.replace(' ',''); DNIS = DNIS.replace(' ','');
+				DNIS = DNIS.replace(' ',''); DNIS = DNIS.replace(' ','');
+				</script>
+
+			</filled>
+		</field>
+
+		<field name="ANI">
+			
+			<!-- CUSTOMIZABLE: depends on if switch will send ani-->
+			<grammar version="1.0" mode="dtmf" root="ani_digits" tag-format="semantics/1.0">
+
+				<rule id="ani_digits">
+					<item repeat="10-10">
+						<ruleref uri="#ani_digit" />
+					</item>
+				</rule>
+				
+				<rule id="ani_digit">
+					<one-of>
+						<item>0</item>
+						<item>1</item>
+						<item>2</item>
+						<item>3</item>
+						<item>4</item>
+						<item>5</item>
+						<item>6</item>
+						<item>7</item>
+						<item>8</item>
+						<item>9</item>
+					</one-of>
+				</rule>
+			</grammar>
+
+			<prompt timeout="10s"/>
+			
+			<catch event="noinput nomatch">
+				<assign name="ANI" expr="''"/>
+				<submit next="EntryPointServlet" namelist="ANI DNIS" />
+			</catch>
+			
+			<filled>
+				<script>
+					ANI = ANI.replace(' ',''); ANI = ANI.replace(' ',''); ANI = ANI.replace(' ',''); ANI = ANI.replace(' ','');
+					ANI = ANI.replace(' ',''); ANI = ANI.replace(' ',''); ANI = ANI.replace(' ',''); ANI = ANI.replace(' ','');
+					ANI = ANI.replace(' ',''); ANI = ANI.replace(' ','');
+				</script>
+				<submit next="EntryPointServlet" namelist="ANI DNIS" />
+			</filled>
+		</field>
+	</form>
+
+	<catch event="error" count="1">
+		<app:equalsInitParameter name="ivrPlatform" match="GVP"
+			ignoreCase="true">
+			<log posturl="<c:out value="${applicationScope.globalProp.staticVXMLDir}"/>Log.asp">
+			<value
+				expr="'VXMLAppError: ' + telera.error.description" />
+			</log>
+		</app:equalsInitParameter>
+		<app:equalsInitParameter name="ivrPlatform" match="WVR"
+			ignoreCase="true">
+			<log>
+			<value expr="CALLID + 'VXMLAppError: ' + _message" />
+			</log>
+		</app:equalsInitParameter>
+		<goto next="#transferAction" />
+	</catch>
+
+	<catch event="error" count="2">
+		<app:equalsInitParameter name="ivrPlatform" match="GVP"
+			ignoreCase="true">
+			<log posturl="<c:out value="${applicationScope.globalProp.staticVXMLDir}"/>Log.asp">
+			<value
+				expr="'VXMLAppError: ' + telera.error.description" />
+			</log>
+		</app:equalsInitParameter>
+		<app:equalsInitParameter name="ivrPlatform" match="WVR"
+			ignoreCase="true">
+			<log>
+			<value expr="CALLID + 'VXMLAppError: ' + _message" />
+			</log>
+		</app:equalsInitParameter>
+		<exit />
+	</catch>
+
+	<%@ include file="TransferAction.jspf" %>
+
+</vxml>

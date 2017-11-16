@@ -1,0 +1,65 @@
+<?xml version="1.0" encoding="iso-8859-1"?>
+
+<grammar xmlns="http://www.w3.org/2001/06/grammar"
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xsi:schemaLocation="http://www.w3.org/2001/06/grammar 
+                             http://www.w3.org/TR/speech-grammar/grammar.xsd"
+	xml:lang="en-US" version="1.0" mode="voice" root="flexPhone"
+	tag-format="semantics/1.0">
+
+<!--  10 Digit PHONE GRAMMAR
+
+	  [area code] 1 2 3  4 5 6 flex 4 digits -->
+
+
+
+<rule id="digit">
+ 	<one-of>
+ 		<item><ruleref uri="#zeros"/><tag><![CDATA[$=$zeros;]]></tag></item>
+ 		<item><ruleref uri="#numbers1to9"/><tag><![CDATA[$=$numbers1to9;]]></tag></item>
+ 	</one-of>
+</rule>
+
+<rule id="zeros">
+	<one-of>
+ 		<item>zero<tag><![CDATA[$="0";]]></tag></item>
+ 		<item>oh<tag><![CDATA[$="0";]]></tag></item>
+	</one-of>
+</rule>
+
+
+<rule id="numbers1to9">
+	<one-of>
+ 		<item>one<tag><![CDATA[$="1";]]></tag></item>
+ 		<item>two<tag><![CDATA[$="2";]]></tag></item>
+ 		<item>three<tag><![CDATA[$="3";]]></tag></item>
+ 		<item>four<tag><![CDATA[$="4";]]></tag></item>
+ 		<item>five<tag><![CDATA[$="5";]]></tag></item>
+ 		<item>six<tag><![CDATA[$="6";]]></tag></item>
+ 		<item>seven<tag><![CDATA[$="7";]]></tag></item>
+ 		<item>eight<tag><![CDATA[$="8";]]></tag></item>
+ 		<item>nine<tag><![CDATA[$="9";]]></tag></item>
+	</one-of>
+</rule>
+
+
+
+
+<!-- repeat="x-x" is a genesis workaround that makes immediate return after last digit instead of after interdigittimeout more -->
+
+<rule id="flexPhone" scope="public">
+ <ruleref special="NULL"/><tag><![CDATA[$="";]]></tag>
+ 
+     <item>
+     	<item repeat="0-1">area code</item>
+     	<item repeat="3-3"><ruleref uri="#digit"/><tag><![CDATA[$=$+$digit;]]></tag></item>
+     	<item repeat="3-3"><ruleref uri="#digit"/><tag><![CDATA[$=$+$digit;]]></tag></item>
+     	<item><ruleref uri="flex4digits.grxml"/><tag><![CDATA[$=$+$$;]]></tag></item>
+	 </item>
+
+	 
+
+</rule>
+
+
+</grammar>

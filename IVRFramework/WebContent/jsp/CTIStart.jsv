@@ -1,0 +1,222 @@
+<?xml version="1.0" encoding="iso-8859-1"?>
+<!-- Version 11/11/2010 -->
+
+<%@ page errorPage="Error.jsv" %>
+
+<%@ taglib uri="http://jakarta.apache.org/taglibs/request-1.0" prefix="req" %>
+<%@ taglib uri="http://jakarta.apache.org/taglibs/response-1.0" prefix="res" %>
+<%@ taglib uri="http://jakarta.apache.org/taglibs/application-1.0" prefix="app" %>
+<%@ taglib uri="http://jakarta.apache.org/taglibs/session-1.0" prefix="sess" %>
+<%@ taglib uri="http://java.sun.com/jsp/jstl/core" prefix="c" %>
+
+<%response.setDateHeader("Expires", 0);
+			response.setHeader("Cache-Control", "no-cache");
+			response.setHeader("Pragma", "no-cache");
+
+			%>
+
+<vxml version="2.0" xml:lang="en-US" xmlns="http://www.w3.org/2001/vxml" application="<%=request.getContextPath()%>/jsp/Root.jsv">
+	<%@ page contentType="application/voicexml+xml" %>
+
+
+	<meta name="GENERATOR" content="Voice Toolkit for WebSphere Studio" />
+	<!-- Place VoiceXML JSP (.jsv) content here. -->
+	<!-- CTIStart.jsv -->
+
+	<!-- The following script function can be used for finding the tag value in an XML string,
+		such as the response received from GVP I-server, for example, 
+		ANI = findValueFromXML(getANI, 'IVRANI');-->
+	<script>
+		function findValueFromXML(xml, key) {
+			var value = '';
+			var index = xml.indexOf(key);
+			if (index >=0) {
+				var index1 = xml.indexOf("value='", index); 
+				var index2 = -1; 
+				if (index1 >=0 ) index2 = xml.indexOf("'", index1 + 7);
+
+				if (index1 >= 0 &amp;&amp; index2 >= 0) { 
+					value = xml.substring(index1 + 7, index2); 
+				}
+			}
+
+			return value;
+		}
+	</script>
+	<var name="CALLID" expr="'<sess:attribute name="callid"/>'" />
+	<var name="ANI" expr="'<sess:attribute name="ANI"/>'" />
+	<var name="DNIS" expr="'<sess:attribute name="DNIS"/>'" />
+	<var name="genesysDNIS" expr="''" />
+	<var name="ctiData" expr="''" />
+	<var name="subject" expr="''" />
+	<var name="exitReason" expr="''" />
+
+	<!-- typical dir on WVR: file:///xxxxx/vxml/ -->
+	<!-- typical dir on GVP: http://localhost:80/xxxxx/vxml -->
+	<var name="staticVXMLDir" expr="'<c:out value="${applicationScope.globalProp.staticVXMLDir}"/>'"/>
+
+	<form>
+		<app:equalsInitParameter name="ivrPlatform" match="GVP"
+			ignoreCase="true">
+			<var name="connectionID" expr="session.genesys.connid"/> 
+		</app:equalsInitParameter>
+
+		<app:equalsInitParameter name="ivrPlatform" match="WVR"
+				ignoreCase="true">
+			<var name="connectionID" expr="''"/> 
+		</app:equalsInitParameter>
+
+		<req:equalsAttribute name="cti_platform" match="GENESYS" ignoreCase="true">
+			<!-- CUSTOMIZABLE: perform any necessary cti start actions here. 
+						e.g., initiate ctiCallStart to Genesys I-server,
+							   get DNIS, ANI and attached data etc -->
+							   
+			<!-- use Genesys I-server driver to notify call start-->
+			<subdialog srcexpr="staticVXMLDir + 'genesys.vxml#newCall'" name="newCall" maxage="0">
+				<filled>
+					<if cond="newCall.strResultCode == '1'">
+						<submit next="EntryPointServlet" namelist="ANI DNIS CALLID ctiData connectionID" />
+					</if>
+				</filled>
+			</subdialog>					   
+			
+			<!-- use Genesys I-server driver to obtain ANI-->
+			<subdialog srcexpr="staticVXMLDir + 'genesys.vxml#getCallInfo'" name="getCallInfo1" maxage="0">
+				<param name="instrInput" expr="'ANI'"/>
+				<filled>
+					<if cond="getCallInfo1.strResultCode == '0'">
+						<assign name="ANI" expr="getCallInfo1.strValue"/>
+					</if>
+				</filled>
+			</subdialog>
+
+			<!-- use Genesys I-server driver to obtain genesysDNIS-->
+			<subdialog srcexpr="staticVXMLDir + 'genesys.vxml#getCallInfo'" name="getCallInfo2" maxage="0">
+				<param name="instrInput" expr="'DNIS'"/>
+				<filled>
+					<if cond="getCallInfo2.strResultCode == '0'">
+						<assign name="genesysDNIS" expr="getCallInfo2.strValue"/>
+					</if>
+				</filled>
+			</subdialog>
+
+			<!-- use Genesys I-server driver to obtain CALLID-->
+			<subdialog srcexpr="staticVXMLDir + 'genesys.vxml#getCallInfo'" name="getCallInfo3" maxage="0">
+				<param name="instrInput" expr="'CallID'"/>
+				<filled>
+					<if cond="getCallInfo3.strResultCode == '0'">
+						<assign name="CALLID" expr="getCallInfo3.strValue"/>
+					</if>
+				</filled>
+			</subdialog>
+			
+			<!-- use Genesys I-server driver to obtain call data UU_DATA-->
+			<subdialog srcexpr="staticVXMLDir + 'genesys.vxml#getData'" name="getCallData1" maxage="0">
+				<param name="instrInput" expr="'&lt;`ATTACHDATANAME`=`UU_DATA`&gt;'"/>
+				<filled>
+					<if cond="getCallData1.strResultCode == '0'">
+						<assign name="ctiData" expr="ctiData + 'UU_DATA:' + getCallData1.strValue + ';'"/>
+					</if>
+				</filled>
+			</subdialog>
+			
+			<!-- use Genesys I-server driver to obtain call data screenpop_data-->
+			<subdialog srcexpr="staticVXMLDir + 'genesys.vxml#getData'" name="getCallData2" maxage="0">
+				<param name="instrInput" expr="'&lt;`ATTACHDATANAME`=`screenpop_data`&gt;'"/>
+				<filled>
+					<if cond="getCallData2.strResultCode == '0'">
+						<assign name="ctiData" expr="ctiData + 'screenpop_data:' + getCallData2.strValue + ';'"/>
+					</if>
+				</filled>
+			</subdialog>	
+		</req:equalsAttribute>
+		
+		<block>
+			<!-- <assign name="DNIS" expr="'4000'"/>
+			<assign name="ctiData" expr="'UU_DATA:value1;screenpop_data:value2'" />-->
+			<submit next="EntryPointServlet" namelist="ANI DNIS CALLID ctiData connectionID genesysDNIS" />
+		</block>
+
+		<catch event="error">
+			<app:equalsInitParameter name="ivrPlatform" match="GVP"
+				ignoreCase="true">
+				<log posturl="<c:out value="${applicationScope.globalProp.staticVXMLDir}"/>Log.asp">
+					<value
+					expr="CALLID + 'VXMLAppError: ' + telera.error.description" />
+				</log>
+			</app:equalsInitParameter>
+			<app:equalsInitParameter name="ivrPlatform" match="WVR"
+				ignoreCase="true">
+				<log>
+					<value expr="CALLID + 'VXMLAppError: ' + _message" />
+				</log>
+			</app:equalsInitParameter>
+			<submit next="EntryPointServlet"
+				namelist="ANI DNIS CALLID connectionID genesysDNIS" />
+		</catch>
+	</form>
+
+	<catch event="error.badfetch" count="1">
+		<audio
+			src="<c:out value="${applicationScope.globalProp.audioFileRoot}"/>/platform/<c:out value="${sessionScope.LANG}"/>/SysDifficulty${applicationScope.globalProp.audioFileExtension}" />
+
+		<app:equalsInitParameter name="ivrPlatform" match="GVP"
+			ignoreCase="true">
+			<log posturl="<c:out value="${applicationScope.globalProp.staticVXMLDir}"/>Log.asp">
+				<value
+					expr="'VXMLAppError: ' + telera.error.description" />
+			</log>
+		</app:equalsInitParameter>
+		<app:equalsInitParameter name="ivrPlatform" match="WVR"
+			ignoreCase="true">
+			<log>
+				<value expr="CALLID + 'VXMLAppError: ' + _message" />
+			</log>
+		</app:equalsInitParameter>
+		<assign name="subject" expr="'VXMLAppError.BadFetch'" />
+		<assign name="exitReason" expr="'VXMLAppError.BadFetch'" />
+
+		<c:if
+			test="${applicationScope.globalProp.transferOnError == 'true'}">
+			<audio
+				src="<c:out value="${applicationScope.globalProp.audioFileRoot}"/>/platform/<c:out value="${sessionScope.LANG}"/>/TransferToAgent${applicationScope.globalProp.audioFileExtension}" />
+
+			<goto next="#transferAction" />
+		</c:if>
+		<c:if
+			test="${applicationScope.globalProp.transferOnError != 'true'}">
+			<audio
+				src="<c:out value="${applicationScope.globalProp.audioFileRoot}"/>/platform/<c:out value="${sessionScope.LANG}"/>/TryAgainLater${applicationScope.globalProp.audioFileExtension}" />
+			<audio
+				src="<c:out value="${applicationScope.globalProp.audioFileRoot}"/>/platform/<c:out value="${sessionScope.LANG}"/>/Goodbye${applicationScope.globalProp.audioFileExtension}" />
+
+			<submit next="<%=request.getContextPath()%>/ExitServlet"
+				namelist="exitReason" />
+		</c:if>
+	</catch>
+
+	<catch event="error.badfetch" count="2">
+
+		<app:equalsInitParameter name="ivrPlatform" match="GVP"
+			ignoreCase="true">
+			<log posturl="<c:out value="${applicationScope.globalProp.staticVXMLDir}"/>Log.asp">
+				<value
+					expr="'VXMLAppError: ' + telera.error.description" />
+			</log>
+		</app:equalsInitParameter>
+		<app:equalsInitParameter name="ivrPlatform" match="WVR"
+			ignoreCase="true">
+			<log>
+				<value expr="CALLID + 'VXMLAppError: ' + _message" />
+			</log>
+		</app:equalsInitParameter>
+
+		<exit />
+	</catch>
+
+	<catch event="error" count="2">
+		<exit />
+	</catch>
+
+	<%@ include file="TransferAction.jspf" %>
+</vxml>

@@ -1,0 +1,127 @@
+<?xml version="1.0" encoding ="iso-8859-1"?>
+<!-- Version 09/8/2010 -->
+
+<%@ taglib uri="http://jakarta.apache.org/taglibs/request-1.0" prefix="req" %>
+<%@ taglib uri="http://jakarta.apache.org/taglibs/response-1.0" prefix="res" %>
+<%@ taglib uri="http://jakarta.apache.org/taglibs/application-1.0" prefix="app" %>
+<%@ taglib uri="http://jakarta.apache.org/taglibs/session-1.0" prefix="sess" %>
+<%@ taglib uri="http://java.sun.com/jsp/jstl/core" prefix="c" %>
+
+<%@ taglib uri="/WEB-INF/tld/ibm_ivr_framework.tld"   prefix="ivr" %>
+
+<%response.setDateHeader("Expires", 0);
+			response.setHeader("Cache-Control", "no-cache");
+			response.setHeader("Pragma", "no-cache");
+%>
+
+<vxml version="2.0" xml:lang="en-US" xmlns="http://www.w3.org/2001/vxml"
+	application="<%=request.getContextPath()%>/jsp/Root.jsv">
+	<%@ page contentType="application/voicexml+xml" %>
+	<meta name="GENERATOR" content="Voice Toolkit for WebSphere Studio" />
+	<!-- Place VoiceXML JSP (.jsv) content here. -->
+	<!-- Welcome.jsv -->
+
+	<sess:existsAttribute name="iCallRoutingConfirmed" value="false">
+		<var name="targetNumber"
+			expr="'<c:out value="${applicationScope.globalProp.defaultOperator}"/>'" />
+	</sess:existsAttribute>
+	<sess:existsAttribute name="iCallRoutingConfirmed">
+		<sess:existsAttribute name="iOperator">
+			<var name="targetNumber"
+				expr="'<c:out value="${sessionScope.iOperator.value}"/>'" />
+		</sess:existsAttribute>
+		<sess:existsAttribute name="iOperator" value="false">
+			<var name="targetNumber"
+				expr="'<c:out value="${applicationScope.globalProp.defaultOperator}"/>'" />
+		</sess:existsAttribute>		
+	</sess:existsAttribute>
+
+	<var name="CALLID" expr="'<sess:attribute name="callid"/>'" />
+
+	<var name="exitReason" expr="''" />
+
+	<!-- do not allow bargein in welcome/broadcast message-->
+	<property name="bargein" value="false" />
+	
+	<form id = "introaudio">
+		<block>
+			<ivr:audio src="${requestScope.introAudioFile}"
+						tts="${requestScope.introAudioTTS}" />
+			<goto next="#check"/>
+		</block>
+	</form>
+
+	<!-- CUSTOMIZABLE: The following code uses the broadcast message determined in the WelcomeServlet based on global.properties definition
+					if the application needs to figure out the broadcast message from VXML side (i.e., local from IVR platform),
+					replace the form id="check" with proper VXML form and make sure to submit to CallRoutingServlet-->
+	
+	<sess:existsAttribute name="broadcastMsgFile">
+		<req:existsAttribute name="broadcastMessageTimeLimit" value="false">
+			<form id="check">
+				<field>
+					<prompt timeout="10ms"><!-- need to get it to play now - i.e. a flush -->
+						<ivr:audio
+							src="(broadcastMsgFile:aufile)" />
+					</prompt>
+					
+					<grammar mode="dtmf" version="1.0" root="rootRule">
+						<rule id="rootRule" scope="public">
+							<one-of>
+								<item>
+									#
+								</item>
+							</one-of>
+						</rule>
+					</grammar>
+	
+					<catch event="ivr.event.repeat">
+						<submit
+							next="<%=request.getContextPath()%>/CallRoutingServlet" />
+					</catch>
+		
+					<catch event="noinput nomatch">
+						<submit
+							next="<%=request.getContextPath()%>/CallRoutingServlet" />
+					</catch>
+		
+					<catch event="ivr.event.help">
+						<submit
+							next="<%=request.getContextPath()%>/CallRoutingServlet" />
+					</catch>
+		
+					<filled>
+						<submit
+							next="<%=request.getContextPath()%>/CallRoutingServlet" />
+					</filled>
+				</field>
+			</form>
+		</req:existsAttribute>
+	
+		<req:existsAttribute name="broadcastMessageTimeLimit">
+			<form id="check">
+				<property name="fetchaudio"
+					value="${sessionScope.broadcastMsgFile}" />
+	
+				<block>
+					<var name="delay"
+						expr="'<req:attribute name="broadcastMessageTimeLimit"/>'" />
+					<submit
+						next="<%=request.getContextPath()%>/CallRoutingServlet"
+						namelist="delay" />
+				</block>
+			</form>
+		</req:existsAttribute>
+	</sess:existsAttribute>
+	
+	<sess:existsAttribute name="broadcastMsgFile" value="false">
+		<form id="check">
+				<block>
+					<submit
+						next="<%=request.getContextPath()%>/CallRoutingServlet"/>
+				</block>
+			</form>
+	</sess:existsAttribute>
+	
+	<%@ include file="TransferAction.jspf" %>
+
+</vxml>

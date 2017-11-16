@@ -1,0 +1,165 @@
+<?xml version="1.0" encoding="iso-8859-1"?>
+<!-- Version 11/11/2010 -->
+
+<%@ page errorPage="Error.jsv" %>
+<%@ taglib uri="http://jakarta.apache.org/taglibs/request-1.0" prefix="req" %>
+<%@ taglib uri="http://jakarta.apache.org/taglibs/response-1.0" prefix="res" %>
+<%@ taglib uri="http://jakarta.apache.org/taglibs/application-1.0" prefix="app" %>
+<%@ taglib uri="http://jakarta.apache.org/taglibs/session-1.0" prefix="sess" %>
+<%@ taglib uri="http://java.sun.com/jsp/jstl/core" prefix="c" %>
+
+<% 
+	response.setDateHeader("Expires",0);
+	response.setHeader("Cache-Control","no-cache");
+	response.setHeader("Pragma","no-cache");
+%>	
+
+<vxml version="2.0" xml:lang="en-US" xmlns="http://www.w3.org/2001/vxml" application="<%=request.getContextPath()%>/jsp/Root.jsv">
+	<%@ page contentType="application/voicexml+xml" %>
+
+	<meta name="GENERATOR" content="Voice Toolkit for WebSphere Studio" />
+	<!-- Place VoiceXML JSP (.jsv) content here. -->
+	<!-- EntryPoint.jsv -->
+ 
+	<var name="CALLID" expr="'<sess:attribute name="callid"/>'" />
+
+	<var name="exitReason" expr="''" />
+
+	<property name="inputmodes" value="dtmf" />
+	<property name="interdigittimeout" value="3s" />
+	<property name="termtimeout" value="0s" />
+
+	<form>
+
+		<field name="DNIS">
+			<!-- CUSTOMIZABLE: grammar can be customized based on the number of DNIS digits-->
+			<grammar version="1.0" mode="dtmf" root="dnis_digits" tag-format="semantics/1.0">
+
+				<rule id="dnis_digits">
+					<item repeat="3-10">
+						<ruleref uri="#digit" />
+					</item>
+				</rule>
+				<rule id="digit">
+					<one-of>
+						<item>0</item>
+						<item>1</item>
+						<item>2</item>
+						<item>3</item>
+						<item>4</item>
+						<item>5</item>
+						<item>6</item>
+						<item>7</item>
+						<item>8</item>
+						<item>9</item>
+					</one-of>
+				</rule>
+			</grammar>
+
+			<prompt timeout="10s">
+					<audio src="<%=request.getContextPath()%>/audio/collectDNIS${applicationScope.globalProp.audioFileExtension}" >
+						<app:equalsInitParameter name="ttsEnabled" match="TRUE"
+							ignoreCase="true">
+							Please enter the 4 digit DNIS
+						</app:equalsInitParameter>
+					</audio>
+			</prompt>
+			
+			<catch event="noinput nomatch">
+				<assign name="DNIS" expr="''"/>
+				<submit next="EntryPointServlet" namelist="DNIS CALLID" />
+			</catch>
+			
+			<filled>
+				<script>DNIS = DNIS.replace(' ',''); DNIS = DNIS.replace(' ',''); DNIS = DNIS.replace(' ',''); DNIS = DNIS.replace(' ','');</script>
+			</filled>
+		</field>
+
+		<field name="ANI">
+			<grammar version="1.0" mode="dtmf" root="ani_digits" tag-format="semantics/1.0">
+
+				<rule id="ani_digits">
+					<item repeat="10-10">
+						<ruleref uri="#ani_digit" />
+					</item>
+				</rule>
+				
+				<rule id="ani_digit">
+					<one-of>
+						<item>0</item>
+						<item>1</item>
+						<item>2</item>
+						<item>3</item>
+						<item>4</item>
+						<item>5</item>
+						<item>6</item>
+						<item>7</item>
+						<item>8</item>
+						<item>9</item>
+					</one-of>
+				</rule>
+			</grammar>
+
+			<prompt timeout="10s">
+					<audio src="<%=request.getContextPath()%>/audio/collectANI${applicationScope.globalProp.audioFileExtension}" >
+						<app:equalsInitParameter name="ttsEnabled" match="TRUE"
+							ignoreCase="true">
+							Please enter the 10 digit ANI
+						</app:equalsInitParameter>
+					</audio>
+			</prompt>
+			
+			<catch event="noinput nomatch">
+				<assign name="ANI" expr="''"/>
+				<submit next="EntryPointServlet" namelist="ANI DNIS CALLID" />
+			</catch>
+			
+			<filled>
+				<script>
+					ANI = ANI.replace(' ',''); ANI = ANI.replace(' ',''); ANI = ANI.replace(' ',''); ANI = ANI.replace(' ','');
+					ANI = ANI.replace(' ',''); ANI = ANI.replace(' ',''); ANI = ANI.replace(' ',''); ANI = ANI.replace(' ','');
+					ANI = ANI.replace(' ',''); ANI = ANI.replace(' ','');
+				</script>
+				<submit next="EntryPointServlet" namelist="ANI DNIS CALLID" />
+			</filled>
+		</field>
+
+	</form>
+
+	<catch event="error" count="1">
+		<app:equalsInitParameter name="ivrPlatform" match="GVP"
+			ignoreCase="true">
+			<log posturl="<c:out value="${applicationScope.globalProp.staticVXMLDir}"/>Log.asp">
+			<value
+				expr="'VXMLAppError: ' + telera.error.description" />
+			</log>
+		</app:equalsInitParameter>
+		<app:equalsInitParameter name="ivrPlatform" match="WVR"
+			ignoreCase="true">
+			<log>
+			<value expr="CALLID + 'VXMLAppError: ' + _message" />
+			</log>
+		</app:equalsInitParameter>
+		<goto next="#transferAction" />
+	</catch>
+
+	<catch event="error" count="2">
+		<app:equalsInitParameter name="ivrPlatform" match="GVP"
+			ignoreCase="true">
+			<log posturl="<c:out value="${applicationScope.globalProp.staticVXMLDir}"/>Log.asp">
+			<value
+				expr="'VXMLAppError: ' + telera.error.description" />
+			</log>
+		</app:equalsInitParameter>
+		<app:equalsInitParameter name="ivrPlatform" match="WVR"
+			ignoreCase="true">
+			<log>
+			<value expr="CALLID + 'VXMLAppError: ' + _message" />
+			</log>
+		</app:equalsInitParameter>
+		<exit />
+	</catch>
+
+	<%@ include file="TransferAction.jspf" %>
+
+</vxml>

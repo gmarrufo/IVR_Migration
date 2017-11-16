@@ -1,0 +1,112 @@
+<!-- Global Commands Version 11/2/2010 -->
+
+	<sess:existsAttribute name="iCallRoutingConfirmed">
+	<!--for defining global repeat command 
+					application specific repeat event will be thrown-->
+		<% if (iCallRouting.getGlobalRepeatKey() != null || iCallRouting.getGlobalRepeatCommand() != null){ %>
+		<link event="ivr.event.repeat">
+			<% if (iCallRouting.getGlobalRepeatCommand()!= null){ %>
+			<grammar mode="voice" version="1.0" root="repeat">
+				<rule id="repeat" scope="public">
+					<one-of>
+						<item><%=iCallRouting.getGlobalRepeatCommand()%></item>
+					</one-of>
+				</rule>
+			</grammar>
+			<%} %>
+			<% if (iCallRouting.getGlobalRepeatKey()!= null){ %>
+			<grammar mode="dtmf" version="1.0" root="repeat2">
+				<rule id="repeat2" scope="public"><%=iCallRouting.getGlobalRepeatKey()%></rule>
+			</grammar>
+			<%} %>
+		</link>
+		<%} %>
+	<!--for defining global operator command
+					application specific repeat event will be thrown-->
+		<% if (iCallRouting.getGlobalOperatorKey() != null || iCallRouting.getGlobalOperatorCommand() != null){ %>
+		<link event="ivr.event.operator">
+			<% if (iCallRouting.getGlobalOperatorCommand()!= null){ %>
+			<grammar mode="voice" version="1.0" root="operator">
+				<rule id="operator" scope="public">
+					<one-of>
+						<item><%=iCallRouting.getGlobalOperatorCommand()%></item>
+					</one-of>
+				</rule>
+			</grammar>
+			<%}  %>
+			<% if (iCallRouting.getGlobalOperatorKey()!= null){ %>
+			<grammar mode="dtmf" version="1.0" root="operator2">
+				<rule id="operator2" scope="public"><%=iCallRouting.getGlobalOperatorKey()%></rule>
+			</grammar>
+			<%} %>
+		</link>
+		<%} %>
+		
+	<!-- for defining global back up command
+					route the call to the submenu which is identified as previous visited menu-->
+		<%
+		String globalBackupKeyCommand = iCallRouting.getGlobalBackupKey()== null ? iCallRouting.getGlobalBackupCommand() : iCallRouting.getGlobalBackupKey();
+		if (iCallRouting.getGlobalBackupKey()!= null || iCallRouting.getGlobalBackupCommand() != null){ %>
+		<link
+			next="<%=request.getContextPath()%>/CallRoutingServlet?menuType=previousmenu&amp;selection=<%=java.net.URLEncoder.encode(globalBackupKeyCommand, "UTF-8")%>">
+			<% if (iCallRouting.getGlobalBackupCommand()!= null){ %>
+			<grammar mode="voice" version="1.0" root="backup">
+				<rule id="backup" scope="public">
+					<one-of>
+						<item><%=iCallRouting.getGlobalBackupCommand()%></item>
+					</one-of>
+				</rule>
+			</grammar>
+			<%}  %>
+			<% if (iCallRouting.getGlobalBackupKey()!= null){ %>
+			<grammar mode="dtmf" version="1.0" root="backup2">
+				<rule id="backup2" scope="public"><%=iCallRouting.getGlobalBackupKey()%></rule>
+			</grammar>
+			<%} %>
+		</link>
+		<%} %>
+					
+
+	<!-- for defining global main menu command
+					route the call to the submenu which is identified as main menu 
+					in the attribute of the CallRouting tag of XML-->
+		<% if (iCallRouting.getGlobalMainmenuKey()!= null || iCallRouting.getGlobalMainmenuCommand() != null){ %>					
+		<link
+			next="<%=request.getContextPath()%>/CallRoutingServlet?menuType=mainmenu">
+			<% if (iCallRouting.getGlobalMainmenuCommand()!= null){ %>
+			<grammar mode="voice" version="1.0" root="mainmenu">
+				<rule id="mainmenu" scope="public">
+					<one-of>
+						<item><%=iCallRouting.getGlobalMainmenuCommand()%></item>
+					</one-of>
+				</rule>
+			</grammar>
+			<%} %>
+			<% if (iCallRouting.getGlobalMainmenuKey()!= null){ %>
+			<grammar mode="dtmf" version="1.0" root="mainmenu2">
+				<rule id="mainmenu2" scope="public"><%=iCallRouting.getGlobalMainmenuKey()%></rule>
+			</grammar>
+			<%} %>
+		</link>
+		<%} %>
+		
+		
+	<!--for defining global help command
+			application specific help event will be thrown-->
+		<%// if (iCallRouting.getGlobalHelpKey()!= null){ %>
+		<!-- <link event="ivr.event.help">
+			<grammar mode="voice" version="1.0" root="help">
+				<rule id="help" scope="public">
+					<one-of>
+						<item><%//=iCallRouting.getGlobalHelpCommand()%></item>
+					</one-of>
+				</rule>
+			</grammar>
+			<grammar mode="dtmf" version="1.0" root="help2">
+				<rule id="help2" scope="public"><%//=iCallRouting.getGlobalHelpKey()%></rule>
+			</grammar>
+		</link> -->
+		<%//} %>
+	</sess:existsAttribute>
+	
+<!-- Global Commands Version 11/2/2010 -->

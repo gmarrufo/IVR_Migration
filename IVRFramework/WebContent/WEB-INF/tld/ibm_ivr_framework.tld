@@ -1,0 +1,98 @@
+<?xml version="1.0" encoding="ISO-8859-1" ?>
+<!DOCTYPE taglib PUBLIC "-//Sun Microsystems, Inc.//DTD JSP Tag Library 1.1//EN" "http://java.sun.com/j2ee/dtds/web-jsptaglibrary_1_1.dtd">
+
+<taglib>
+  <tlibversion>1.0</tlibversion>
+  <jspversion>1.2</jspversion>
+  <shortname>IBM IVR</shortname>
+  <info>IBM IVR Framwork Tag Library</info>
+
+  <tag>
+    <name>audio</name>
+    <tagclass>com.ibm.ivr.framework.tags.AudioTag</tagclass>
+    <bodycontent>jsp</bodycontent>
+    <info>Create a set of VXML audio tags for a space seperated wave file names.</info>
+    <attribute>
+       <name>src</name>
+       <required>false</required>
+       <rtexprvalue>true</rtexprvalue>
+    </attribute>
+    <attribute>
+       <name>tts</name>
+       <required>false</required>
+       <rtexprvalue>true</rtexprvalue>
+    </attribute>
+    <attribute>
+       <name>index</name>
+       <required>false</required>
+       <rtexprvalue>true</rtexprvalue>
+    </attribute>
+    <attribute>
+       <name>listCount</name>
+       <required>false</required>
+       <rtexprvalue>true</rtexprvalue>
+    </attribute>
+    <attribute>
+       <name>caching</name>
+       <required>false</required>
+       <rtexprvalue>true</rtexprvalue>
+    </attribute>
+    <attribute>
+       <name>fetchtimeout</name>
+       <required>false</required>
+       <rtexprvalue>true</rtexprvalue>
+    </attribute>
+    <attribute>
+       <name>type</name>
+       <required>false</required>
+       <rtexprvalue>true</rtexprvalue>
+    </attribute>
+  </tag>
+
+  <tag>
+    <name>grammar</name>
+    <tagclass>com.ibm.ivr.framework.tags.GrammarTag</tagclass>
+    <bodycontent>jsp</bodycontent>
+    <info>Create the inline grammar for the submenu.</info>
+    <attribute>
+       <name>mode</name>
+       <required>true</required>
+       <rtexprvalue>true</rtexprvalue>
+    </attribute>
+  </tag>
+
+  <tag>
+    <name>vxml</name>
+    <tagclass>com.ibm.ivr.framework.tags.VXMLTag</tagclass>
+    <bodycontent>jsp</bodycontent>
+    <info>Create the VXML properties tags for the submenu.</info>
+    <attribute>
+       <name>properties</name>
+       <required>true</required>
+       <rtexprvalue>true</rtexprvalue>
+    </attribute>
+  </tag>
+      
+  <tag>
+    <name>routing</name>
+    <tagclass>com.ibm.ivr.framework.tags.RoutingTag</tagclass>
+    <bodycontent>empty</bodycontent>
+    <info>Create the correct submit tag based on the target.</info>
+    <attribute>
+       <name>type</name>
+       <required>true</required>
+       <rtexprvalue>true</rtexprvalue>
+    </attribute>
+    <attribute>
+       <name>index</name>
+       <required>false</required>
+       <rtexprvalue>true</rtexprvalue>
+    </attribute>
+    <attribute>
+       <name>scope</name>
+       <required>false</required>
+       <rtexprvalue>true</rtexprvalue>
+    </attribute>
+  </tag>  
+    
+</taglib>

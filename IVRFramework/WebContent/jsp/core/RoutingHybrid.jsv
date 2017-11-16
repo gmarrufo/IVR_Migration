@@ -1,0 +1,313 @@
+<?xml version="1.0" encoding ="iso-8859-1"?>
+<!-- Version 12/14/2010 -->
+
+<%@ page errorPage="../Error.jsv" %>
+
+<%@ taglib uri="http://jakarta.apache.org/taglibs/request-1.0" prefix="req" %>
+<%@ taglib uri="http://jakarta.apache.org/taglibs/response-1.0" prefix="res" %>
+<%@ taglib uri="http://jakarta.apache.org/taglibs/application-1.0" prefix="app" %>
+<%@ taglib uri="http://jakarta.apache.org/taglibs/session-1.0" prefix="sess" %>
+<%@ taglib uri="http://java.sun.com/jsp/jstl/core" prefix="c" %>
+
+<%@ taglib uri="/WEB-INF/tld/ibm_ivr_framework.tld"   prefix="ivr" %>
+
+<%response.setDateHeader("Expires", 0);
+			response.setHeader("Cache-Control", "no-cache");
+			response.setHeader("Pragma", "no-cache");
+%>
+
+<%@page import="com.ibm.ivr.framework.model.AudioComplexType"%><req:request id="req" />
+
+<vxml version="2.0" xml:lang="en-US" xmlns="http://www.w3.org/2001/vxml"
+	application="<%=request.getContextPath()%>/jsp/Root.jsv">
+	<%@ page 
+    contentType="application/voicexml+xml" %>
+	<meta name="GENERATOR" content="Voice Toolkit for WebSphere Studio" />
+	<!-- Place VoiceXML JSP (.jsv) content here. -->
+	<!-- RoutingHybrid.jsv -->
+
+	<sess:existsAttribute name="iCallRoutingConfirmed" value="false">
+		<var name="targetNumber"
+			expr="'<c:out value="${applicationScope.globalProp.defaultOperator}"/>'" />
+	</sess:existsAttribute>
+	<sess:existsAttribute name="iCallRoutingConfirmed">
+		<sess:existsAttribute name="iOperator">
+			<var name="targetNumber"
+				expr="'<c:out value="${sessionScope.iOperator.value}"/>'" />
+		</sess:existsAttribute>
+		<sess:existsAttribute name="iOperator" value="false">
+			<var name="targetNumber"
+				expr="'<c:out value="${applicationScope.globalProp.defaultOperator}"/>'" />
+		</sess:existsAttribute>		
+	</sess:existsAttribute>
+
+	<var name="CALLID" expr="'<sess:attribute name="callid"/>'" />
+
+	<var name="exitReason" expr="''" />
+
+	<!-- Hold SubMenu Selection to pass into jsv  -->
+	<var name="menuName" expr="''" />
+	<var name="mode" expr="''" />
+	<var name="menuType" expr="''" />
+	<var name="dest" expr="''" />
+	<var name="destType" expr="''" />
+	<var name="handler" expr="''" />
+	<var name="audio" expr="''" />
+	<var name="tts" expr="''" />
+	<var name="dnis" expr="''" />
+	<var name="reason" expr="''" />
+	<var name="selection" expr="''" />
+	<var name="utterance" expr="''" />
+	<var name="counter" expr="''" />
+	<var name="recording" expr="'none'"/>
+	<var name="agentType" expr="''" />
+	<var name="reprompt" expr="'true'" />
+	<var name="inputErrorAudioPlayed" expr="'false'" />
+
+	<property name="inputmodes" value="voice dtmf" />
+	<property name="fetchaudio" value="<c:out value="${applicationScope.globalProp.fetchAudioRoot}"/>/<c:out value="${sessionScope.LANG}"/>/<c:out value="${applicationScope.globalProp.fetchAudio}"/>" />
+	
+
+	<%
+	org.apache.log4j.Logger LOGGER = org.apache.log4j.Logger.getLogger(this.getClass());
+	com.ibm.ivr.framework.model.SubMenuType iSubMenu = (com.ibm.ivr.framework.model.SubMenuType) request
+					.getAttribute("iSubMenu");
+	// retrieve iCallRouting from servlet context
+	String dnis = (String) session.getAttribute("DNIS");
+	String xmlKey = (String) session.getAttribute("xmlKey");
+	java.util.Hashtable hs = (java.util.Hashtable) this.getServletContext().getAttribute(
+				"callRoutingTable");
+	com.ibm.ivr.framework.model.CallRoutingType iCallRouting = (com.ibm.ivr.framework.model.CallRoutingType) hs.get(xmlKey);
+	
+	String logToken = new StringBuffer("[").append(session.getAttribute("callid")).append("] ").toString();
+	boolean testCall = ((Boolean) session.getAttribute("testCall")).booleanValue();
+	%>
+
+	<%@ include file="GlobalCommands.jspf" %>
+	
+	<form id="top">
+		<var name="inputErrorCounter" expr="0" />
+		<var name="noinputCounter" expr="0" />
+		<var name="nomatchCounter" expr="0" />
+		<var name="event" expr="''" />
+
+		<%String vxml = iSubMenu.getVxml();
+			if (vxml != null) {%>
+		<ivr:vxml properties="<%=vxml%>" />
+		<%}%>
+
+		<%String repeat = iSubMenu.getRepeat();
+			if (repeat != null) {%>
+		<link event="ivr.event.repeat">
+			<grammar mode="voice" version="1.0" root="repeat3">
+				<rule id="repeat3" scope="public">
+					<one-of>
+						<item>
+							<%=repeat%>
+						</item>
+					</one-of>
+				</rule>
+			</grammar>
+		</link>
+		<%}%>
+
+		<block>
+			<assign name="application.returnURL"
+				expr="'<req:attribute name="returnURL"/>'" />
+		</block>
+
+		<!--  Process SubMenu     -->
+		<field name="menuInput">
+			
+			<%String maxnbest = iSubMenu.getMaxnbest();
+			  if ( maxnbest != null) {%>
+				<property name="maxnbest" value="<%=maxnbest%>"/>
+			<%}%>
+
+			<%com.ibm.ivr.framework.model.GrammarType grammar = iSubMenu
+					.getGrammar();
+			String grammarTag = null;			
+			if (grammar != null) {
+				//grammarTag is only used by GVP platform as a workaround
+				//assuming grammar tag only contains single grammar file
+				int index = grammar.getValue().indexOf(".");
+				if (index > 0) grammarTag = grammar.getValue().substring(0, index);
+				else {//if not external grammar, check if it is dynamic grammar
+					if (grammar.getValue().startsWith("$")) {
+						Object value = session.getAttribute(grammar.getValue().substring(1));
+						//if session var contains the grammar filename (of type String)
+						if (value.getClass().getName().equalsIgnoreCase("java.lang.String"))
+							grammarTag = grammar.getValue().substring(1);
+						else
+							grammarTag = grammar.getValue().substring(1) + "Grammar";					
+					}
+				}
+
+				if (!grammar.getValue().startsWith("$")) {//if non dynamic grammar%> 
+					<!-- Genesys Ticket: 298798 can't specify type in Grammar tag in GVP 7.2; bug fixed in GVP 7.5-->
+					<app:equalsInitParameter name="ivrPlatform" match="GVP"
+						ignoreCase="true">
+						<grammar
+							src="<jsp:getProperty name="req" property="contextPath"/>/grammar/<%=grammar.getValue()%>"
+							mode="voice" />	
+						<grammar
+							src="<jsp:getProperty name="req" property="contextPath"/>/grammar/DTMF<%=grammar.getValue()%>"
+							mode="dtmf" />					
+					</app:equalsInitParameter>
+					<app:equalsInitParameter name="ivrPlatform" match="WVR"
+						ignoreCase="true">
+						<grammar
+							src="<jsp:getProperty name="req" property="contextPath"/>/grammar/<%=grammar.getValue()%>"
+							type="<%=(grammar.getType_()!=null?grammar.getType_().trim():"application/srgs+xml")%>" mode="voice" />
+						<grammar
+							src="<jsp:getProperty name="req" property="contextPath"/>/grammar/DTMF<%=grammar.getValue()%>"
+							type="<%=(grammar.getType_()!=null?grammar.getType_().trim():"application/srgs+xml")%>" mode="dtmf" />
+					</app:equalsInitParameter>
+			<%	}
+				else {//if dynamic grammar var is a String representing the actual grammar file name
+					Object value = session.getAttribute(grammar.getValue().substring(1));
+					//if session var contains the grammar filename (of type String)
+					if (value.getClass().getName().equalsIgnoreCase("java.lang.String")){%>
+					
+					<!-- Genesys Ticket: 298798 can't specify type in Grammar tag in GVP 7.2; bug fixed in GVP 7.5-->
+					<app:equalsInitParameter name="ivrPlatform" match="GVP"
+						ignoreCase="true">	
+						<grammar
+							src="<jsp:getProperty name="req" property="contextPath"/>/grammar/<%=value%>"
+							mode="voice" />	
+						<grammar
+							src="<jsp:getProperty name="req" property="contextPath"/>/grammar/DTMF<%=value%>"
+							mode="dtmf" />								
+					</app:equalsInitParameter>
+					<app:equalsInitParameter name="ivrPlatform" match="WVR"
+						ignoreCase="true">
+						<grammar
+							src="<jsp:getProperty name="req" property="contextPath"/>/grammar/<%=value%>"
+							type="<%=(grammar.getType_()!=null?grammar.getType_().trim():"application/srgs+xml")%>" mode="voice" />
+						<grammar
+							src="<jsp:getProperty name="req" property="contextPath"/>/grammar/DTMF<%=value%>"
+							type="<%=(grammar.getType_()!=null?grammar.getType_().trim():"application/srgs+xml")%>" mode="dtmf" />
+					</app:equalsInitParameter>						
+			<%		}
+				}
+			}%>
+
+			<ivr:grammar mode="hybrid" />
+
+			<!--  Prompt Caller For Input     -->
+			
+			<%//check dynamic status message%>
+			<%com.ibm.ivr.framework.plugin.StatusMessage statusMessage = (com.ibm.ivr.framework.plugin.StatusMessage)request.getAttribute("statusMessage");
+			  if (statusMessage != null){%>
+			  	<prompt bargein="<%=(statusMessage.isBargeinFlag()?"true":"false")%>">
+				  <ivr:audio
+					src="${requestScope.statusMessage.audioURL}" type="status"/>
+				</prompt>
+			<%}%>
+			
+		<% java.util.List audios = iSubMenu.getAudio();
+			com.ibm.ivr.framework.plugin.StatusMessage[] sMsgs = (com.ibm.ivr.framework.plugin.StatusMessage[])request.getAttribute("statusMessageList");
+			if (audios != null) {%>
+				<%for(int i = 0; i < audios.size(); i++) {
+					AudioComplexType audio = (AudioComplexType) audios.get(i);
+					if ("STATUS".equalsIgnoreCase(audio.getType_())){
+						if(sMsgs[i] != null){%>
+			  	<prompt bargein="<%=(sMsgs[i].isBargeinFlag()?"true":"false")%>">
+				  	<ivr:audio
+						src="<%=sMsgs[i].getAudioURL()%>" type="status"/>
+				</prompt>					
+					<%	}
+					}else{%>
+				<prompt>
+					<ivr:audio index="<%=i%>"/>
+				</prompt>
+		<%
+				}%>
+			<%}
+			}%>
+
+			<catch event="ivr.event.repeat">
+				<% java.util.List repeatAudios = iSubMenu.getRepeatAudio();
+					if (repeatAudios != null && repeatAudios.size() > 0) {
+						for(int i = 0; i < repeatAudios.size(); i++) {%>
+						<prompt>  
+							<ivr:audio index="<%=i%>" type="repeat"/>
+						</prompt>
+				<%		}
+					}else{%>
+					<reprompt />
+				<%}%>
+			</catch>
+
+			<req:existsAttribute name="hangupCounter">
+				<catch event=" connection.disconnect.hangup">
+					<var name="counter" expr="'<c:out value="${requestScope.hangupCounter}"/>'" />
+					<assign name="exitReason" expr="'Hangup'"/>
+					<submit next="<%=request.getContextPath()%>/ExitServlet" namelist="exitReason counter" />
+				</catch>	
+			</req:existsAttribute>
+
+			<%@ include file="MenuOperator.jspf" %>
+
+			<%@ include file="ErrorHandling.jspf" %>
+
+			<filled>
+				
+				<% if (maxnbest != null) { %>
+					<var name="nbestList" expr="''"/>
+					<script>
+						for (var i=0;i != application.lastresult$.length;i++) {
+							nbestList += application.lastresult$[i].interpretation + '('
+									+ application.lastresult$[i].confidence + ')';
+						}
+					</script>
+				<%}%>
+
+				<assign name="utterance" expr="application.lastresult$.utterance" />
+
+				<%int count = iSubMenu.getChoice().size();
+			java.util.List choice = iSubMenu.getChoice();
+			for (int i = 0; i < count; i++) {
+				String annot = ((com.ibm.ivr.framework.model.ChoiceType) choice
+						.get(i)).getAnnot().trim();
+				annot = annot.startsWith("@") ? annot.substring(1) : annot;
+				
+				//check the cond of the Choice, if false, no need to do the routing
+				String cond = ((com.ibm.ivr.framework.model.ChoiceType) choice
+						.get(i)).getCond();
+				boolean condResult = true;
+				if (cond != null && cond.length() != 0) {
+					condResult = com.ibm.ivr.framework.utilities.Common
+							.conditionsMatch(cond, session, logToken);
+					if (testCall)
+						LOGGER.debug(new StringBuffer(logToken).append(
+								"RoutingTag cond: [" + cond).append(
+								"] evaluated as: ").append(condResult));
+				}
+				if (condResult) {
+				%>
+				<if cond="menuInput.indexOf('<%=annot%>') == 0">
+					<ivr:routing type="Choice" index="<%=i%>" />
+				</if>
+				<%}
+				}%>
+
+				<!-- GVP does not support interpretation from DTMF grammar (work around)
+					assuming single external grammar and the choice for matching external grammar 
+					is always the first one in the list-->
+				<app:equalsInitParameter name="ivrPlatform" match="GVP"
+					ignoreCase="true">
+					<%if (grammar != null) {%>
+						<assign name="dest" expr="'<%=grammarTag%>:' + dest"/>
+						<ivr:routing type="Choice" index="<%=0%>" />
+					<%}%>
+				</app:equalsInitParameter>
+
+
+			</filled>
+		</field>
+	</form>
+
+	<%@ include file="../TransferAction.jspf" %>
+
+</vxml>

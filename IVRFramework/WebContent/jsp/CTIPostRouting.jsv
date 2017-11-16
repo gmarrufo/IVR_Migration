@@ -1,0 +1,151 @@
+<?xml version="1.0" encoding="iso-8859-1"?>
+<!-- Version 09/8/2010 -->
+
+<%@ page errorPage="Error.jsv" %>
+
+<%@ taglib uri="http://jakarta.apache.org/taglibs/request-1.0" prefix="req" %>
+<%@ taglib uri="http://jakarta.apache.org/taglibs/response-1.0" prefix="res" %>
+<%@ taglib uri="http://jakarta.apache.org/taglibs/application-1.0" prefix="app" %>
+<%@ taglib uri="http://jakarta.apache.org/taglibs/session-1.0" prefix="sess" %>
+<%@ taglib uri="http://java.sun.com/jsp/jstl/core" prefix="c" %>
+
+<%response.setDateHeader("Expires", 0);
+			response.setHeader("Cache-Control", "no-cache");
+			response.setHeader("Pragma", "no-cache");
+
+			%>
+
+<vxml version="2.0" xml:lang="en-US" xmlns="http://www.w3.org/2001/vxml" application="<%=request.getContextPath()%>/jsp/Root.jsv">
+	<%@ page contentType="application/voicexml+xml" %>
+
+
+	<meta name="GENERATOR" content="Voice Toolkit for WebSphere Studio" />
+	<!-- Place VoiceXML JSP (.jsv) content here. -->
+	<!-- CTIPostRouting.jsv -->
+
+	<var name="CALLID" expr="'<sess:attribute name="callid"/>'" />
+	
+	<!-- CUSTOMIZABLE: The following script can be uncommented if wants to use WVR line_address as call id-->
+	<!-- The script below verifies that the "session.ibm" object exists and then
+		sets the CALLID to session.ibm.line_address.toString();
+		This enables the code to work seamlessly (without crash) in environments where the
+		session.ibm.line_address variable does not exist, such as the voice toolkit browser
+	 -->
+	<!-- script>
+		if('' + (typeof session) != '' + undefined) {
+			if('' + (typeof session.ibm) != '' + undefined) {
+				CALLID = session.ibm.line_address.toString();
+			}
+		}
+	</script> -->
+
+	<!-- The following script function can be used for finding the tag value in an XML string,
+		such as the response received from GVP I-server, for example, 
+		ANI = findValueFromXML(getANI, 'IVRANI');-->
+	<script>
+		function findValueFromXML(xml, key) {
+			var value = '';
+			var index = xml.indexOf(key);
+			if (index >=0) {
+				var index1 = xml.indexOf("value='", index); 
+				var index2 = -1; 
+				if (index1 >=0 ) index2 = xml.indexOf("'", index1 + 7);
+
+				if (index1 >= 0 &amp;&amp; index2 >= 0) { 
+					value = xml.substring(index1 + 7, index2); 
+				}
+			}
+
+			return value;
+		}
+	</script>
+	<var name="routeRequest" expr="'DONE'" />
+	
+	<!-- CUSTOMIZABLE: define the var to save the attached data from URS
+					these variables will be submitted to EntryPointServlet and consumed by CTIReentryPlugin to set
+					properly into HttpSession to be used by later call flow,
+					this file shows the example to get these data using object available on GVP platform -->
+	<var name="IVRTarget" expr="''" />
+	<var name="IVRTargetLocation" expr="''" />
+	<var name="MSGID" expr="''" />
+	<var name="PostRoutingEntry" expr="''" />
+	<var name="WeekdayStartTime" expr="''" />
+	<var name="WeekdayEndTime" expr="''" />
+	
+
+	<form>
+
+		<app:equalsInitParameter name="ivrPlatform" match="GVP"
+			ignoreCase="true">
+			<var name="connectionID" expr="session.genesys.connid"/> 
+		</app:equalsInitParameter>
+
+		<!-- Get result from URS -->
+		<!-- CUSTOMIZABLE: the following shows the example using object available on GVP platform -->
+		<object name="getIVRTarget" classid="CRData:get">
+			<param name="IVRTarget" expr="''" />
+		</object>
+		<object name="getIVRTargetLocation"
+			classid="CRData:get">
+			<param name="IVRTargetLocation" expr="''" />
+		</object>
+		<object name="getMSGID" classid="CRData:get">
+			<param name="MSGID" expr="''" />
+		</object>
+		<object name="getPostRoutingEntry" classid="CRData:get">
+			<param name="PostRoutingEntry" expr="''" />
+		</object>
+		<object name="getWeekdayStartTime" classid="CRData:get">
+			<param name="WeekdayStartTime" expr="''" />
+		</object>
+		<object name="getWeekdayEndTime" classid="CRData:get">
+			<param name="WeekdayEndTime" expr="''" />
+		</object>
+
+		<filled>
+			<assign name="IVRTarget"
+				expr="findValueFromXML(getIVRTarget, 'IVRTarget')" />
+			<assign name="IVRTargetLocation"
+				expr="findValueFromXML(getIVRTargetLocation, 'IVRTargetLocation')" />
+			<assign name="MSGID"
+				expr="findValueFromXML(getMSGID, 'MSGID')" />
+			<assign name="PostRoutingEntry"
+				expr="findValueFromXML(getPostRoutingEntry, 'PostRoutingEntry')" />
+			<assign name="WeekdayStartTime"
+				expr="findValueFromXML(getWeekdayStartTime, 'WeekdayStartTime')" />
+			<assign name="WeekdayEndTime"
+				expr="findValueFromXML(getWeekdayEndTime, 'WeekdayEndTime')" />
+			<submit next="EntryPointServlet"
+				namelist="IVRTarget IVRTargetLocation MSGID PostRoutingEntry WeekdayStartTime WeekdayEndTime routeRequest CALLID connectionID" />
+		</filled>
+
+		<catch event="error">
+			<app:equalsInitParameter name="ivrPlatform" match="GVP"
+				ignoreCase="true">
+				<log posturl="<c:out value="${applicationScope.globalProp.staticVXMLDir}"/>Log.asp">
+					<value
+					expr="CALLID + 'VXMLAppError: ' + telera.error.description" />
+				</log>
+				<var name="errorMessage" expr="telera.error.description" />
+			</app:equalsInitParameter>
+			<app:equalsInitParameter name="ivrPlatform" match="WVR"
+				ignoreCase="true">
+				<log>
+					<value expr="CALLID + 'VXMLAppError: ' + _message" />
+				</log>
+				<var name="errorMessage" expr="_message" />
+			</app:equalsInitParameter>
+			
+			<var name="defaultRouting" expr="'true'" />
+			<var name="TNT" expr="''"/>
+			<!-- the original exitReason was saved as session var reason before sending request to URS -->
+			<var name="exitReason" expr="'<c:out value="${sessionScope.reason}"/>'"/>
+
+			<submit next="TNTServlet" namelist="TNT exitReason defaultRouting errorMessage" />
+		</catch>
+
+	</form>
+
+	<%@ include file="TransferAction.jspf" %>
+
+</vxml>

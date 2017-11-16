@@ -1,0 +1,45 @@
+<?xml version="1.0" encoding="iso-8859-1"?>
+<grammar xmlns="http://www.w3.org/2001/06/grammar"
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xsi:schemaLocation="http://www.w3.org/2001/06/grammar 
+                             http://www.w3.org/TR/speech-grammar/grammar.xsd"
+	xml:lang="en-US" version="1.0" mode="voice" root="addtag"
+	tag-format="semantics/1.0">
+
+
+
+<rule id="digit">
+ <one-of>
+   <item> 0 </item>
+   <item> 1 </item>
+   <item> 2 </item>
+   <item> 3 </item>
+   <item> 4 </item>
+   <item> 5 </item>
+   <item> 6 </item>
+   <item> 7 </item>
+   <item> 8 </item>
+   <item> 9 </item>
+ </one-of>
+</rule>
+
+
+
+<!-- repeat="x-x" is a genesis workaround that makes immediate return after last digit instead of after interdigittimeout more -->
+
+<rule id="collectNumber" scope="public">
+ <ruleref special="NULL"/><tag><![CDATA[$="";]]></tag>
+   <item>
+     <item repeat="10-10"><ruleref uri="#digit"/><tag><![CDATA[$=$+$digit;]]></tag></item>
+   </item>
+</rule>
+
+<rule id="addtag" scope="public">
+
+     <item><ruleref uri="#collectNumber"/><tag><![CDATA[$="phoneNumber:"+$collectNumber;]]></tag></item>
+
+
+</rule>
+
+
+</grammar>

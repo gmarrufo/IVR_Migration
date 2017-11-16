@@ -1,0 +1,627 @@
+<?xml version="1.0" encoding ="iso-8859-1"?>
+<!-- Version 09/8/2010 -->
+
+<%@ page errorPage="core/TransferError.jsv" %>
+
+<%@ taglib uri="http://jakarta.apache.org/taglibs/request-1.0" prefix="req" %>
+<%@ taglib uri="http://jakarta.apache.org/taglibs/response-1.0" prefix="res" %>
+<%@ taglib uri="http://jakarta.apache.org/taglibs/application-1.0" prefix="app" %>
+<%@ taglib uri="http://jakarta.apache.org/taglibs/session-1.0" prefix="sess" %>
+<%@ taglib uri="http://java.sun.com/jsp/jstl/core" prefix="c" %>
+<%@ taglib prefix="fn" uri="http://java.sun.com/jsp/jstl/functions" %>
+
+<%@ taglib uri="/WEB-INF/tld/ibm_ivr_framework.tld"   prefix="ivr" %>
+
+<%response.setDateHeader("Expires", 0);
+			response.setHeader("Cache-Control", "no-cache");
+			response.setHeader("Pragma", "no-cache");
+
+			%>
+
+<vxml version="2.0" xml:lang="en-US" xmlns="http://www.w3.org/2001/vxml"
+	application="<%=request.getContextPath()%>/jsp/Root.jsv">
+	<%@ page contentType="application/voicexml+xml" %>
+
+	<meta name="GENERATOR" content="Voice Toolkit for WebSphere Studio" />
+	<!-- Place VoiceXML JSP (.jsv) content here. -->
+	<!-- Transfer.jsv -->
+
+	<sess:existsAttribute name="iCallRoutingConfirmed" value="false">
+		<var name="targetNumber"
+			expr="'<c:out value="${applicationScope.globalProp.defaultOperator}"/>'" />
+	</sess:existsAttribute>
+	<sess:existsAttribute name="iCallRoutingConfirmed">
+		<sess:existsAttribute name="iOperator">
+			<var name="targetNumber"
+				expr="'<c:out value="${sessionScope.iOperator.value}"/>'" />
+		</sess:existsAttribute>
+		<sess:existsAttribute name="iOperator" value="false">
+			<var name="targetNumber"
+				expr="'<c:out value="${applicationScope.globalProp.defaultOperator}"/>'" />
+		</sess:existsAttribute>		
+	</sess:existsAttribute>
+
+	<!-- The following script function can be used for finding the tag value in an XML string,
+		such as the response received from GVP I-server, for example, 
+		ANI = findValueFromXML(getANI, 'IVRANI');-->
+	<script>
+		function findValueFromXML(xml, key) {
+			var value = '';
+			var index = xml.indexOf(key);
+			if (index >=0) {
+				var index1 = xml.indexOf("value='", index); 
+				var index2 = -1; 
+				if (index1 >=0 ) index2 = xml.indexOf("'", index1 + 7);
+
+				if (index1 >= 0 &amp;&amp; index2 >= 0) { 
+					value = xml.substring(index1 + 7, index2); 
+				}
+			}
+
+			return value;
+		}
+	</script>
+
+	<var name="CALLID" expr="'<sess:attribute name="callid"/>'" />
+
+	<var name="exitReason" expr="''" />
+
+	<var name="IVRTarget" expr="''" />
+	<var name="IVRTargetLocation" expr="''" />
+	<var name="TNT" expr="''" />
+	<var name="errorMessage" expr="''" />
+	<var name="playRegularPrompt" expr="'true'"/>
+	<var name="converseTransfer" expr="''"/>
+
+	<!-- typical dir on WVR: file:///xxxxx/vxml/ -->
+	<!-- typical dir on GVP: http://localhost:80/xxxxx/vxml -->
+	<var name="staticVXMLDir" expr="'<c:out value="${applicationScope.globalProp.staticVXMLDir}"/>'"/>
+
+	<%// for simulated transfer, no transfer action performed but call status logged as normal%>
+	<req:equalsAttribute name="agentType" match="SIMXFER"
+			ignoreCase="true">
+		<form>
+			<block>
+				<assign name="exitReason"
+					expr="'<sess:attribute name="reason"/>'" />
+				<submit next="ExitServlet" namelist="exitReason" />
+			</block>
+		</form>
+	</req:equalsAttribute>
+
+
+	<%// for a non-CTI agent where the destination number has already been obtained in TransferSerlvet as dest%>
+	<req:equalsAttribute name="agentType" match="AGENT"
+			ignoreCase="true">
+		<form>
+			<block>
+				<goto next="#regularHourPrompt" />
+			</block>
+		</form>
+	</req:equalsAttribute>
+
+	<req:equalsAttribute name="agentType" match="LINEAGENT"
+			ignoreCase="true">
+		<form>
+			<block>
+				<goto next="#regularHourPrompt" />
+			</block>
+		</form>
+	</req:equalsAttribute>
+	
+	<req:equalsAttribute name="agentType" match="CONVERSEAGENT"
+			ignoreCase="true">
+		<form>
+			<block>
+				<goto next="#regularHourPrompt" />
+			</block>
+		</form>
+	</req:equalsAttribute>
+	
+	<app:equalsInitParameter name="ctiEnabled" match="true"
+			ignoreCase="true">
+		<%// for a CTI agent where the destination number has already been obtained in TransferServlet either from XML 
+		// or as set by EntryPointServlet when sent back from URS%>
+		<req:equalsAttribute name="agentType" match="CTIAGENTDIRECT"
+				ignoreCase="true">
+			<form>
+				<!-- Attach the data -->
+				<app:equalsInitParameter name="ivrPlatform" match="GVP"
+					ignoreCase="true">
+					<!-- attachedString is not supported yet. coding is needed to parse the string to separate key and value pairs -->
+					<object name="attachUData"
+						classid="CRData:genericAction">
+						<param name="IServer_Action" value="UData" />
+						<c:forEach items="${sessionScope.attachedData}"
+							var="data">
+							<param name="<c:out value="${data.key}" />"
+								value="<c:out value="${data.value}" />" />
+						</c:forEach>
+						<!-- if attach data operation failed, still continue normally-->
+						<catch event="error" count="1">
+							<goto nextitem="cont" />
+						</catch>
+					</object>
+				</app:equalsInitParameter>
+
+				<%// CUSTOMIZABLE: depends on the interface of the wrapper app to access the I-server driver 
+				  //				API functions%>
+				<app:equalsInitParameter name="ivrPlatform" match="WVR"
+					ignoreCase="true">
+
+					<sess:existsAttribute name="ctiStartDone" value="false">
+						<sess:setAttribute name="ctiStartDone">true</sess:setAttribute>
+						<!-- CUSTOMIZABLE: if ctistart is not called yet, -->		
+						<!-- Calls cticallstart before attaching the data-->
+						<subdialog srcexpr="staticVXMLDir + 'genesys.vxml#newCall'" name="newCall" maxage="0"/>
+					</sess:existsAttribute>	
+							
+					<%java.util.HashMap attachedData = (java.util.HashMap) session.getAttribute("attachedData");
+					String attachedString = (String) session.getAttribute("attachedString");
+					if (!attachedData.isEmpty() || attachedString != null) {//if any key/value pair exists in attachedData map or attachedString is set
+						String data = "";
+						if (attachedString != null) data = attachedString;
+						else{
+						    java.util.Iterator keys = (java.util.Iterator)attachedData.keySet().iterator(); 
+						    while (keys.hasNext()){
+						    	String key = (String)keys.next();
+						    	data += "#" + key + "#" + attachedData.get(key);
+						    }
+						}
+						pageContext.setAttribute("attData",data);
+						%>
+						<c:set var="escapedData" scope="page" value="${fn:escapeXml(attData)}"/>
+						<subdialog srcexpr="staticVXMLDir + 'genesys.vxml#attachData'" name="attachUData" maxage="0">
+							<param name="instrInput" expr="'&lt;`ATTACHDATANAME`=`<%=pageContext.getAttribute("escapedData")%>`&gt;'"/>
+							<!-- if attach data operation failed, still continue normally-->
+							<catch event="error" count="1">
+								<goto nextitem="cont" />
+							</catch>
+						</subdialog>
+					<%}%>
+				</app:equalsInitParameter>
+
+				<block name="cont">
+					<assign name="IVRTarget" expr="'<c:out value="${requestScope.IVRTarget}"/>'" />
+					<assign name="IVRTargetLocation" expr="'<c:out value="${requestScope.IVRTargetLocation}"/>'" />
+					<goto next="#regularHourPrompt" />
+				</block>
+			</form>
+		</req:equalsAttribute>
+
+		<form id="preTransferChecking">
+			<%// for a CTI agent where the route request should be issued explicitly %>
+			<req:equalsAttribute name="agentType" match="CTIAGENT"
+				ignoreCase="true">
+
+				<app:equalsInitParameter name="ivrPlatform" match="GVP"
+					ignoreCase="true">
+
+					<!-- Attach the data -->
+					<!-- attachedString is not supported yet. coding is needed to parse the string to separate key and value pairs -->
+					<object name="attachUData"
+						classid="CRData:genericAction">
+						<param name="IServer_Action" value="UData" />
+						<c:forEach items="${sessionScope.attachedData}"
+							var="data">
+							<param name="<c:out value="${data.key}" />"
+								value="<c:out value="${data.value}" />" />
+						</c:forEach>
+					</object>
+
+					<%// CUSTOMIZABLE: either go to QueueCall.jsp to have GVP route the call to URS or
+					  //				issue route request to I-server and wait for response back%>
+					<!-- Route request -->
+					<block>
+						<goto
+							next="<%=request.getContextPath()%>/jsp/QueueCall.jsp?dest=<c:out value="${requestScope.dest}" />" />
+					</block>
+				</app:equalsInitParameter>
+
+				<app:equalsInitParameter name="ivrPlatform" match="WVR"
+					ignoreCase="true">
+
+					<%// CUSTOMIZABLE: depends on the interface of the wrapper app to access the I-server driver 
+				 	  //				API functions%>
+
+					<sess:existsAttribute name="ctiStartDone" value="false">
+						<sess:setAttribute name="ctiStartDone">true</sess:setAttribute>
+						<!-- CUSTOMIZABLE: if ctistart is not called yet, -->		
+						<!-- Calls cticallstart before attaching the data-->
+						<subdialog srcexpr="staticVXMLDir + 'genesys.vxml#newCall'" name="newCall" maxage="0"/>
+					</sess:existsAttribute>	
+					
+					<!-- Attach the data -->
+					<%java.util.HashMap attachedData = (java.util.HashMap) session.getAttribute("attachedData");
+					String attachedString = (String) session.getAttribute("attachedString");
+					if (!attachedData.isEmpty() || attachedString != null) {//if any key/value pair exists in attachedData map or attachedString is set
+						String data = "";
+						if (attachedString != null) data = attachedString;
+						else{
+						    java.util.Iterator keys = (java.util.Iterator)attachedData.keySet().iterator(); 
+						    while (keys.hasNext()){
+						    	String key = (String)keys.next();
+						    	data += "#" + key + "#" + attachedData.get(key);
+						    }
+						}
+						pageContext.setAttribute("attData",data);
+						%>
+						<c:set var="escapedData" scope="page" value="${fn:escapeXml(attData)}"/>
+						<subdialog srcexpr="staticVXMLDir + 'genesys.vxml#attachData'" name="attachUData" maxage="0">
+							<param name="instrInput" expr="'&lt;`ATTACHDATANAME`=`<%=pageContext.getAttribute("escapedData")%>`&gt;'"/>
+							<filled>
+								<if cond="attachUData.strResultCode == '1'">
+									<!-- if attachUData failed, use default routing???-->
+									<assign name="errorMessage" expr="'attachUData failed with strResultCode: ' + attachUData.strResultCode" />
+									<var name="defaultRouting" expr="'true'" />
+									<assign name="exitReason" expr="'TransferError.AttachData'" />
+									<submit next="TNTServlet"
+										namelist="TNT exitReason defaultRouting errorMessage" />
+								<else/>
+									<goto next="#regularHourPrompt" />
+								</if>
+							</filled>
+							<error>
+								<!-- if attachUData failed, use default routing???-->
+								<assign name="errorMessage" expr="'Attached data failed with VXML error event'" />
+								<var name="defaultRouting" expr="'true'" />
+								<assign name="exitReason" expr="'TransferError.AttachData'" />
+								<submit next="TNTServlet"
+									namelist="TNT exitReason defaultRouting errorMessage" />
+							</error>
+						</subdialog>
+					<%}%>
+
+				</app:equalsInitParameter>
+			</req:equalsAttribute>
+
+			<%// for the call routed back from URS into EntryPointServlet, agentType attribute does not exist in request
+			  // use the IVRTarget and IVRTargetLocation set in EntryPointServlet directly%>
+			<req:existsAttribute name="agentType" value="false">
+				<block>
+					<assign name="IVRTarget"
+						expr="'<c:out value="${sessionScope.IVRTarget}"/>'" />
+					<assign name="IVRTargetLocation"
+						expr="'<c:out value="${sessionScope.IVRTargetLocation}"/>'" />
+					<goto next="#regularHourPrompt" />
+				</block>
+			</req:existsAttribute>
+		</form>
+	</app:equalsInitParameter>
+
+	<form id="regularHourPrompt">
+		<req:existsAttribute name="iAudioHelper">
+			<block>
+				<if cond="playRegularPrompt == 'true'">
+				<jsp:useBean id="iAudioHelper" scope="request" type="com.ibm.ivr.framework.utilities.AudioHelper" />
+					<% 	if (iAudioHelper != null) {
+							String [] audioList = iAudioHelper.getAudioFilesInArray();
+							int count = audioList.length;
+							String tts = (String)request.getAttribute("tts");
+							boolean ttsGenerated = false;
+						
+							for (int i=0; i < count; i++) { 
+								String audio = audioList[i].trim();
+								if ((audio == null) || (audio.length() ==0)) continue; 
+								if (ttsGenerated) tts="";
+								
+								if (audio.matches("\\[\\S+\\]")) {//if status message%>
+								<ivr:audio src="<%=audio.substring(1, audio.length()-1)%>" type="status" />
+								<%}else{
+									ttsGenerated = true;%>
+								<ivr:audio src="<%=audio%>" tts="<%=tts%>" />
+						<% 		}
+							} 
+						}%>
+				</if>
+			</block>
+		</req:existsAttribute>
+
+		<%// for a non-CTI agent where the destination number has already been obtained in TransferSerlvet as dest
+		  // CUSTOMIZABLE: either go to TNTServlet for transfer connect or code transfer action here or go to a custom
+		  //		 servlet for the logic, follow the example code in TNTServlet to direct flow into ExitServlet
+		  //		 to have call statistics logged properly and call cleaned up correctly and any special handling 
+		  //		 used in TNTServlet such as incrementing the special counters%>
+
+		<req:equalsAttribute name="agentType" match="AGENT"
+			ignoreCase="true">
+			<block>
+				<assign name="exitReason"
+					expr="'<sess:attribute name="reason"/>'" />
+				<assign name="TNT" expr="'<c:out value="${requestScope.dest}" />'" />
+				<submit next="TNTServlet" namelist="TNT exitReason" />
+			</block>
+		</req:equalsAttribute>
+
+		<req:equalsAttribute name="agentType" match="LINEAGENT"
+			ignoreCase="true">
+			<block>
+				<assign name="exitReason"
+					expr="'<sess:attribute name="reason"/>'" />
+			</block>
+
+			<app:equalsInitParameter name="ctiEnabled" match="true"
+					ignoreCase="true">
+					
+				<!-- Attach the data -->
+				<%java.util.HashMap attachedData = (java.util.HashMap) session.getAttribute("attachedData");
+				String attachedString = (String) session.getAttribute("attachedString");
+				if (!attachedData.isEmpty() || attachedString != null) {//if any key/value pair exists in attachedData map or attachedString is set
+					String data = "";
+					if (attachedString != null) data = attachedString;
+					else{
+					    java.util.Iterator keys = (java.util.Iterator)attachedData.keySet().iterator(); 
+					    while (keys.hasNext()){
+					    	String key = (String)keys.next();
+					    	data += "#" + key + "#" + attachedData.get(key);
+					    }
+					}
+					pageContext.setAttribute("attData",data);
+					%>
+					
+					<sess:existsAttribute name="ctiStartDone" value="false">
+						<sess:setAttribute name="ctiStartDone">true</sess:setAttribute>
+						<!-- CUSTOMIZABLE: if ctistart is not called yet, -->		
+						<!-- Calls cticallstart before attaching the data-->
+						<subdialog srcexpr="staticVXMLDir + 'genesys.vxml#newCall'" name="newCall" maxage="0"/>
+					</sess:existsAttribute>	
+				
+					<c:set var="escapedData" scope="page" value="${fn:escapeXml(attData)}"/>
+					<subdialog srcexpr="staticVXMLDir + 'genesys.vxml#attachData'" name="attachUData" maxage="0">
+						<param name="instrInput" expr="'&lt;`ATTACHDATANAME`=`<%=pageContext.getAttribute("escapedData")%>`&gt;'"/>
+						<error>
+							<goto nextitem="line_agent_transfer" />
+						</error>
+					</subdialog>
+				<%}%>
+			</app:equalsInitParameter>
+			
+			<transfer name="line_agent_transfer" dest="tel:<sess:attribute name="lineAgentPrefix"/><c:out value="${requestScope.dest}"/>;phone-context=<c:out value="${applicationScope.globalProp.phoneContext}"/>" bridge="false">
+				<filled>
+					<submit next="ExitServlet" namelist="exitReason" />
+				</filled>
+				<error>
+					<assign name="exitReason"
+						expr="exitReason + '-LineTransferFailed'" />
+					<submit next="ExitServlet" namelist="exitReason" />
+				</error>
+			</transfer>
+			<catch event="connection.disconnect.transfer">
+				<submit next="ExitServlet" namelist="exitReason" />
+     		</catch>
+		</req:equalsAttribute>
+
+		<req:equalsAttribute name="agentType" match="CONVERSEAGENT"
+			ignoreCase="true">
+			<block>
+				<assign name="exitReason"
+					expr="'<sess:attribute name="reason"/>'" />
+			</block>
+			
+			<app:equalsInitParameter name="ctiEnabled" match="true"
+					ignoreCase="true">
+					
+				<!-- Attach the data -->					
+				<%java.util.HashMap attachedData = (java.util.HashMap) session.getAttribute("attachedData");
+				String attachedString = (String) session.getAttribute("attachedString");
+				if (!attachedData.isEmpty() || attachedString != null) {//if any key/value pair exists in attachedData map or attachedString is set
+					String data = "";
+					if (attachedString != null) data = attachedString;
+					else{
+					    java.util.Iterator keys = (java.util.Iterator)attachedData.keySet().iterator(); 
+					    while (keys.hasNext()){
+					    	String key = (String)keys.next();
+					    	data += "#" + key + "#" + attachedData.get(key);
+					    }
+					}
+					pageContext.setAttribute("attData",data);
+					%>
+					
+					<sess:existsAttribute name="ctiStartDone" value="false">
+						<sess:setAttribute name="ctiStartDone">true</sess:setAttribute>
+						<!-- CUSTOMIZABLE: if ctistart is not called yet, -->		
+						<!-- Calls cticallstart before attaching the data-->
+						<subdialog srcexpr="staticVXMLDir + 'genesys.vxml#newCall'" name="newCall" maxage="0"/>
+					</sess:existsAttribute>	
+				
+					<c:set var="escapedData" scope="page" value="${fn:escapeXml(attData)}"/>
+					<subdialog srcexpr="staticVXMLDir + 'genesys.vxml#attachData'" name="attachUData" maxage="0">
+						<param name="instrInput" expr="'&lt;`ATTACHDATANAME`=`<%=pageContext.getAttribute("escapedData")%>`&gt;'"/>
+						<error>
+							<goto nextitem="converse_agent_transfer" />
+						</error>
+					</subdialog>
+				<%}%>
+			</app:equalsInitParameter>
+					
+			<transfer name="converse_agent_transfer" dest="tel:<sess:attribute name="converseAgentPrefix"/><c:out value="${requestScope.dest}"/>;phone-context=<c:out value="${applicationScope.globalProp.phoneContext}"/>" bridge="false">
+				<filled>
+					<assign name="converseTransfer" expr="'succeeded'"/>
+					<submit next="ExitServlet" namelist="exitReason converseTransfer" />
+				</filled>
+				<error>
+					<assign name="exitReason"
+						expr="exitReason + '-ConverseTransferFailed'" />
+					<submit next="ExitServlet" namelist="exitReason" />
+				</error>
+			</transfer>
+			<catch event="connection.disconnect.transfer">
+				<assign name="converseTransfer" expr="'succeeded'"/>
+				<submit next="ExitServlet" namelist="exitReason converseTransfer" />
+     		</catch>
+		</req:equalsAttribute>
+
+		<app:equalsInitParameter name="ctiEnabled" match="true"
+			ignoreCase="true">
+
+			<block>
+				<%// CUSTOMIZABLE: the condition to check if IVRTarget contains the valid number to be transferred to 
+				  //				can be customized together with the action on how to transfer (see comments above)
+				  //				for the application model that URS always sends back the TFN, the condition here 
+				  //				should always be true%>
+				<if cond="IVRTarget.length == 10">
+					<assign name="exitReason"
+						expr="'<sess:attribute name="reason"/>'" />
+					<assign name="TNT" expr="IVRTarget" />
+					<submit next="TNTServlet" namelist="TNT exitReason" />
+				</if>
+			</block>
+
+			<%// CUSTOMIZABLE: if IVRTarget doesn't contain the valid number to be transferred to, assuming 
+			  // 				it is the queue information, on GVP platform, ask Genesys to provide number%>
+			<app:equalsInitParameter name="ivrPlatform" match="GVP"
+				ignoreCase="true">
+				<!-- Get Access Number -->
+				<object name="getAccessNumber"
+					classid="CRData:genericAction">
+					<param name="IServer_Action" value="AccessNumGet" />
+					<param name="DestDN" expr="IVRTarget" />
+					<param name="Location" expr="IVRTargetLocation" />
+					<param name="XrouteType" value="Default" />
+					<filled>
+						<assign name="exitReason"
+							expr="'<sess:attribute name="reason"/>'" />
+						<var name="result"
+							expr="findValueFromXML(getAccessNumber, 'Result')" />
+						<if cond="result == 'Success'">
+							<!-- Perform TNT transfer -->
+							<assign name="TNT"
+								expr="findValueFromXML(getAccessNumber, 'AccessNum')" />
+							<submit next="TNTServlet"
+								namelist="TNT exitReason" />
+						<else />
+							<assign name="errorMessage"
+								expr="telera.error.description" />
+							<var name="defaultRouting" expr="'true'" />
+							<submit next="TNTServlet"
+								namelist="TNT exitReason defaultRouting errorMessage" />
+						</if>
+					</filled>
+				</object>
+			</app:equalsInitParameter>
+			
+			<%// CUSTOMIZABLE: depends on the interface of the wrapper app to access the I-server driver 
+			  //				API functions%>
+			<app:equalsInitParameter name="ivrPlatform" match="WVR"
+				ignoreCase="true">
+				<!-- Route Request -->
+					<subdialog srcexpr="staticVXMLDir + 'genesys.vxml#routeRequest'" name="routeRequest" maxage="0">
+						<param name="instrInput" expr="'&lt;`ROUTEPOINT`=`<c:out value="${requestScope.dest}" />`&gt;'"/>
+						<filled>
+							<if cond="routeRequest.strResultCode == '1'">
+								<!-- if route Request failed, use default routing -->
+								<assign name="errorMessage" expr="'routeRequest failed with strResultCode: ' + routeRequest.strResultCode" />
+								<var name="defaultRouting" expr="'true'" />
+								<assign name="exitReason" expr="'TransferError.routeRequest'" />
+								<submit next="TNTServlet"
+									namelist="TNT exitReason defaultRouting errorMessage" />
+							<else/>
+								<goto nextitem="transferCall"/>
+							</if>
+						</filled>
+						<error>
+							<assign name="errorMessage" expr="'CTI Transfer failed with VXML error event'" />
+							<var name="defaultRouting" expr="'true'" />
+							<assign name="exitReason" expr="'TransferError.routeRequest'" />
+							<submit next="TNTServlet"
+									namelist="TNT exitReason defaultRouting errorMessage" />
+						</error>
+					</subdialog>
+				<!-- CTI Transfer -->
+					<subdialog srcexpr="staticVXMLDir + 'genesys.vxml#xfervoip'" name="transferCall" maxage="0">
+						<param name="instrInput" expr="'&lt;`DEST`=`' + routeRequest.transfer_point + '`&gt;'"/>
+						<filled>
+							<if cond="transferCall.strResultCode == '1'">
+								<!-- if transfer call failed, use default routing -->
+								<assign name="errorMessage" expr="'transferCall failed with strResultCode: ' + transferCall.strResultCode" />
+								<var name="defaultRouting" expr="'true'" />
+								<assign name="exitReason" expr="'TransferError.CTITransfer'" />
+								<submit next="TNTServlet"
+									namelist="TNT exitReason defaultRouting errorMessage" />
+							<else/>
+								<assign name="exitReason" expr="'<sess:attribute name="reason"/>'" />
+								<submit next="ExitServlet" namelist="exitReason" />
+							</if>
+						</filled>
+						<error>
+							<assign name="errorMessage" expr="'CTI Transfer failed with VXML error event'" />
+							<var name="defaultRouting" expr="'true'" />
+							<assign name="exitReason" expr="'TransferError.CTITransfer'" />
+							<submit next="TNTServlet"
+									namelist="TNT exitReason defaultRouting errorMessage" />
+						</error>
+					</subdialog>					
+			</app:equalsInitParameter>
+			
+		</app:equalsInitParameter>
+
+		<block>
+			<assign name="exitReason"
+				expr="'<sess:attribute name="reason"/>'" />
+			<submit next="ExitServlet" namelist="exitReason" />
+		</block>
+	</form>
+
+	<catch event="error" count="1">
+		<assign name="exitReason"
+			expr="'<sess:attribute name="reason"/>'" />
+
+		<app:equalsInitParameter name="ivrPlatform" match="GVP"
+			ignoreCase="true">
+			<log posturl="<c:out value="${applicationScope.globalProp.staticVXMLDir}"/>Log.asp">
+				<value
+					expr="'VXMLAppError: ' + telera.error.description" />
+			</log>
+			<assign name="errorMessage" expr="telera.error.description" />
+		</app:equalsInitParameter>
+		<app:equalsInitParameter name="ivrPlatform" match="WVR"
+			ignoreCase="true">
+			<log>
+				<value expr="CALLID + 'VXMLAppError: ' + _message" />
+			</log>
+			<assign name="errorMessage" expr="_message" />
+		</app:equalsInitParameter>
+		<var name="defaultRouting" expr="'true'" />
+		<submit next="TNTServlet"
+			namelist="TNT exitReason defaultRouting errorMessage" />
+	</catch>
+
+	<catch event="error" count="2">
+		<app:equalsInitParameter name="ivrPlatform" match="GVP"
+			ignoreCase="true">
+			<log posturl="<c:out value="${applicationScope.globalProp.staticVXMLDir}"/>Log.asp">
+				<value
+					expr="'VXMLAppError: ' + telera.error.description" />
+			</log>
+		</app:equalsInitParameter>
+		<app:equalsInitParameter name="ivrPlatform" match="WVR"
+			ignoreCase="true">
+			<log>
+				<value expr="CALLID + 'VXMLAppError: ' + _message" />
+			</log>
+		</app:equalsInitParameter>
+		<assign name="application.exitReason"
+			expr="'VXMLAppError.TransferActionFailed'" />
+		<goto next="#transferAction" />
+	</catch>
+
+	<catch event="error" count="3">
+		<app:equalsInitParameter name="ivrPlatform" match="GVP"
+			ignoreCase="true">
+			<log posturl="<c:out value="${applicationScope.globalProp.staticVXMLDir}"/>Log.asp">
+				<value
+					expr="'VXMLAppError: ' + telera.error.description" />
+			</log>
+		</app:equalsInitParameter>
+		<app:equalsInitParameter name="ivrPlatform" match="WVR"
+			ignoreCase="true">
+			<log>
+				<value expr="CALLID + 'VXMLAppError: ' + _message" />
+			</log>
+		</app:equalsInitParameter>
+		<exit />
+	</catch>
+
+	<%@ include file="TransferAction.jspf" %>
+
+</vxml>

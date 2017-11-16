@@ -1,0 +1,67 @@
+<?xml version="1.0" encoding ="iso-8859-1"?>
+<!-- Version 09/09/2010 -->
+
+<%@ taglib uri="http://jakarta.apache.org/taglibs/request-1.0" prefix="req" %>
+<%@ taglib uri="http://jakarta.apache.org/taglibs/response-1.0" prefix="res" %>
+<%@ taglib uri="http://jakarta.apache.org/taglibs/application-1.0" prefix="app" %>
+<%@ taglib uri="http://jakarta.apache.org/taglibs/session-1.0" prefix="sess" %>
+<%@ taglib uri="http://java.sun.com/jsp/jstl/core" prefix="c" %>
+
+<%@ taglib uri="/WEB-INF/tld/ibm_ivr_framework.tld"   prefix="ivr" %>
+
+<% 
+	response.setDateHeader("Expires",0);
+	response.setHeader("Cache-Control","no-cache");
+	response.setHeader("Pragma","no-cache");
+%>	
+<vxml version="2.0" xml:lang="en-US" xmlns="http://www.w3.org/2001/vxml">
+	<%@ page contentType="application/voicexml+xml" %>
+	<meta name="GENERATOR" content="Voice Toolkit for WebSphere Studio" />
+	<!-- Place VoiceXML JSP (.jsv) content here. -->
+	<!-- NewApp.jsv -->
+
+
+	<!--CUSTOMIZABLE: For DTMF application on GVP platform, this should be set -->
+	<!-- <app:equalsInitParameter name="ivrPlatform" match="GVP"
+		ignoreCase="true">
+		<property name='com.telera.speechenabled' value='false'/>
+	</app:equalsInitParameter> -->
+
+	<var name="CALLID" expr="'<req:parameter name="callid"/>'" />
+
+	<var name="exitReason" expr="'WebAppError.FailedToTransferToNewApp'" />
+
+	<form>
+		<block>
+			<var name="DNIS" expr="'<req:parameter name="DNIS"/>'" />
+			<var name="ANI" expr="'<req:attribute name="ANI"/>'" />
+			<submit next="<req:attribute name="newAppLink"/>" namelist="DNIS ANI CALLID"/>
+		</block>
+	</form>
+
+	<catch event="error">
+		<audio
+			src="<c:out value="${applicationScope.globalProp.audioFileRoot}"/>/platform/<c:out value="${sessionScope.LANG}"/>/SysDifficulty${applicationScope.globalProp.audioFileExtension}" />
+		<c:if
+			test="${applicationScope.globalProp.transferOnError == 'true'}">
+			<audio
+				src="<c:out value="${applicationScope.globalProp.audioFileRoot}"/>/platform/<c:out value="${sessionScope.LANG}"/>/TransferToAgent${applicationScope.globalProp.audioFileExtension}" />
+			<goto next="#transferAction" />
+		</c:if>
+
+		<c:if
+			test="${applicationScope.globalProp.transferOnError != 'true'}">
+
+			<audio
+				src="<c:out value="${applicationScope.globalProp.audioFileRoot}"/>/platform/<c:out value="${sessionScope.LANG}"/>/TryAgainLater${applicationScope.globalProp.audioFileExtension}" />
+			<audio
+				src="<c:out value="${applicationScope.globalProp.audioFileRoot}"/>/platform/<c:out value="${sessionScope.LANG}"/>/Goodbye${applicationScope.globalProp.audioFileExtension}" />
+
+			<submit next="<%=request.getContextPath()%>/ExitServlet"
+				namelist="exitReason" />
+		</c:if>
+	</catch>
+
+	<%@ include file="../TransferAction.jspf" %>
+
+</vxml>

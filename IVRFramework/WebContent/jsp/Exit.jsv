@@ -1,0 +1,113 @@
+<?xml version="1.0" encoding ="iso-8859-1"?>
+<!-- Version 11/11/2010 -->
+
+<%@ taglib uri="http://jakarta.apache.org/taglibs/request-1.0" prefix="req" %>
+<%@ taglib uri="http://java.sun.com/jsp/jstl/core" prefix="c" %>    
+<%@ taglib uri="http://jakarta.apache.org/taglibs/application-1.0" prefix="app" %> 
+
+<% 
+	response.setDateHeader("Expires",0);
+	response.setHeader("Cache-Control","no-cache");
+	response.setHeader("Pragma","no-cache");
+%>	
+<vxml version="2.0" xml:lang="en-US" xmlns="http://www.w3.org/2001/vxml">
+	<%@ page contentType="application/voicexml+xml" %>
+	<!-- no session should be created for this page -->
+	<%@ page session="false" %> 
+	<meta name="GENERATOR" content="Voice Toolkit for WebSphere Studio" />
+	<!-- Place VoiceXML JSP (.jsv) content here. -->
+	<!-- Exit.jsv -->
+
+	<!-- typical dir on WVR: file:///xxxxx/vxml/ -->
+	<!-- typical dir on GVP: http://localhost:80/xxxxx/vxml -->
+	<var name="staticVXMLDir" expr="'<c:out value="${applicationScope.globalProp.staticVXMLDir}"/>'"/>
+
+	<form>
+
+		<block>
+			<req:equalsParameter name="exitReason" match="CallerExit" ignoreCase="true">
+				<!-- Since session is already destroyed in ExitServlet, can't get CallRouting -->
+				<!-- from session in custom AudioTag.  use iAudioHelper from request scope -->
+				<req:existsAttribute name="iAudioHelper">
+					<jsp:useBean id="iAudioHelper" scope="request" type="com.ibm.ivr.framework.utilities.AudioHelper" />
+					<% 	if (iAudioHelper != null) {
+							String [] audioList = iAudioHelper.getAudioFilesInArray();
+							int count = audioList.length;
+						
+							for (int i=0; i < count; i++) { 
+								String outro = audioList[i].trim();
+								if ((outro == null) || (outro.length() ==0)) continue;  %>
+						
+								<audio src="<c:out value="${applicationScope.globalProp.audioFileRoot}"/>/<req:attribute name="audioDir"/>/<c:out value="${requestScope.LANG}"/>/<%= outro %>"/>
+							
+					<% 		} 
+						}%>
+				</req:existsAttribute>
+			</req:equalsParameter>
+		</block>
+
+		<req:existsAttribute name="ctiStartDone">
+		<!-- CUSTOMIZABLE: for any special cleanup required on the IVR platform-->		
+		<!--Ends the call in the Genesys IVR Server.-->
+		<subdialog srcexpr="staticVXMLDir + 'genesys.vxml#endCall'" name="endCall" maxage="0"/>
+		</req:existsAttribute>
+		
+		<!-- converseTones is set by ExitServlet -->
+		<req:existsAttribute name="converseTones">
+			<app:equalsInitParameter name="ivrPlatform" match="GVP"
+					ignoreCase="true">
+	
+				<field name="transfer" modal="true">
+					<prompt timeout="0.1s">
+						<% String tones = ((String)request.getAttribute("converseTones")).trim(); %>
+						<value mode="dtmfplay" expr="'<%=tones%>'" xmlns="http://www.telera.com/vxml/2.0/ext/20020430"/>
+					</prompt> 
+					<grammar mode="dtmf" version="1.0" root="txfRoot">
+						<rule id="txfRoot" scope="public">
+							<one-of>
+								<item>
+									#
+								</item>
+							</one-of>
+						</rule>
+					</grammar>
+					<noinput>
+						<goto nextitem="exit"/>
+					</noinput>
+					<nomatch>
+						<goto nextitem="exit"/>
+					</nomatch>
+					<filled>
+						<goto nextitem="exit"/>
+					</filled>
+				</field>
+			</app:equalsInitParameter>
+			<!--  -->
+			<app:equalsInitParameter name="ivrPlatform" match="WVR"
+					ignoreCase="true">
+	
+			<transfer name="converse_agent_transfer" dest="tel:${applicationScope.globalProp.converseAgentPrefix}<req:attribute name="converseTones"/>;phone-context=<c:out value="${applicationScope.globalProp.phoneContext}"/>" bridge="false">
+				<filled>
+					<goto nextitem="exit"/>
+				</filled>
+				<error>
+					<goto nextitem="exit"/>
+				</error>
+			</transfer>
+			<catch event="connection.disconnect.transfer">
+				<assign name="converseTransfer" expr="'succeeded'"/>
+				<submit next="ExitServlet" namelist="exitReason converseTransfer" />
+     		</catch>
+			</app:equalsInitParameter>
+		</req:existsAttribute>
+		
+		<block name="exit">
+			<exit />
+		</block>
+	</form>
+
+	<catch event="error">
+		<exit />
+	</catch>
+
+</vxml>

@@ -1,0 +1,120 @@
+# BEGIN REPLACED SECTION
+#callflow.01111=ASCLocator
+#callflow.02222=DirectRoutes
+# END REPLACED SECTION
+
+# BEGIN SECTION Thomson_IVR_Consumer
+# Virtual dnis to jump to another IVR app
+callflow.consumer_mainmenu_dtmf=Consumer.xml#ConsumerMenu.DTMF
+callflow.consumer_repairsmenu_dtmf=Consumer.xml#RepairsMenu.DTMF
+
+#8004471700
+callflow.3062=Consumer.xml
+callflow.2779=Consumer.xml
+#8003361900
+callflow.3057=Consumer.xml#Introduction_RCA.DTMF
+callflow.2778=Consumer.xml
+#8002836503
+callflow.3053=Consumer.xml
+callflow.2777=Consumer.xml
+#8777662728
+callflow.3092=Consumer.xml
+callflow.2788=Consumer.xml
+#8007767226
+callflow.3077=Consumer.xml
+callflow.2784=Consumer.xml
+#8005520338
+callflow.3066=Consumer.xml
+callflow.2782=Consumer.xml
+#8777662672
+callflow.3091=Consumer.xml
+callflow.2787=Consumer.xml
+#8662269941
+callflow.3083=Consumer.xml
+callflow.2786=Consumer.xml
+#8663331473
+callflow.5015=Consumer.xml
+#866-333-1453: test TFN into primary WVR system
+callflow.3123=Consumer.xml
+#866-333-1473: test TFN into secondary WVR system
+callflow.3122=Consumer.xml
+# END SECTION
+
+# BEGIN SECTION Thomson_IVR_Communications
+#RCA Communications Products Use and Care IVR
+#8004480329
+callflow.3063=Communications.xml
+callflow.2780=Communications.xml
+#8887226472
+callflow.3101=Communications.xml
+callflow.2774=Communications.xml
+
+#TTE Web Referral
+#8777947977
+callflow.3093=TTE.xml
+callflow.2815=TTE.xml
+
+#GEAC IVR Referral
+#8007202094
+callflow.3073=GEConsumerElectronics.xml
+callflow.2814=GEConsumerElectronics.xml
+# END SECTION
+
+# BEGIN SECTION Thomson_IVR_Business
+# Virtual dnis to jump to another IVR app
+callflow.b2b_retailermenu_dtmf=B2B.xml#RetailerMenu.DTMF
+callflow.b2b_enterservicecenternumber_dtmf=B2B.xml#EnterServiceCenterNumber.DTMF
+callflow.b2b_commercialmessage_dtmf=B2B.xml#CommercialMessage.DTMF
+# Business Support IVR
+#8664497108
+callflow.3105=B2B.xml
+callflow.2812=B2B.xml
+#8003250464
+callflow.3056=B2B.xml
+callflow.2809=B2B.xml
+#8002704413
+callflow.3109=B2B.xml
+callflow.2807=B2B.xml#Introduction_RCA.DTMF
+
+#Service Contracts IVR
+#8002836193
+callflow.3052=ServiceContracts.xml
+callflow.2808=ServiceContracts.xml
+#8005875518
+callflow.3068=ServiceContracts.xml
+callflow.2811=ServiceContracts.xml
+# END SECTION
+
+# BEGIN SECTION Thomson_IVR_DBS_MSNTV
+# MSN TV IVR
+#8007229599
+callflow.3075=MSNTV.xml
+callflow.2794=MSNTV.xml
+
+# DBS/DirecTV IVR
+#8006794776
+callflow.3071=DBS.xml
+callflow.2793=DBS.xml
+#8003773399
+callflow.3059=DBS.xml
+callflow.2790=DBS.xml
+# END SECTION
+
+# BEGIN SECTION Thomson_IVR_Canada
+# RCA Consumer Relations - French IVR ? Canadian
+#8005520445
+callflow.3067=CanadianFrench.xml
+callflow.2810=CanadianFrench.xml
+# END SECTION
+
+# BEGIN SECTION Thomson_IVR_SvcLocator
+# ASC Locator
+#8882063359 for Get Connected
+callflow.3097=ASCLocator.xml
+callflow.2816=ASCLocator.xml
+callflow.locator_dtmf=ASCLocator.xml#StandardIntroduction.DTMF
+callflow.locatorUS_dtmf=ASCLocator.xml#StandardIntroductionUS.DTMF
+callflow.locatorCA_dtmf=ASCLocator.xml#StandardIntroductionCA.DTMF
+callflow.locatorUSTV_dtmf=ASCLocator.xml#StandardIntroductionUSTV.DTMF
+callflow.locatorCATV_dtmf=ASCLocator.xml#StandardIntroductionCATV.DTMF
+# END SECTION
